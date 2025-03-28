@@ -10,9 +10,15 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 import random
+import wandb
+from wandb_login import login
+
+login()
+
+wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
 # Define dataset path
-DATASET_PATH = "../ASVSpoof/ASVspoof2021_DF_eval"  # Adjust as needed
+DATASET_PATH = r"../ASVspoof2021_DF_eval"  # Adjust as needed
 
 # AST Pretrained Model
 MODEL_NAME = "MIT/ast-finetuned-audioset-10-10-0.4593"
@@ -61,7 +67,7 @@ class ASVspoofDataset(Dataset):
         
         # Keep only files that exist
         self.files = [f for f in self.labels.keys() if os.path.exists((os.path.join(self.data_dir, f)) + ".flac")]
-        self.files = self.files[:50]
+        self.files = self.files[:500]
         print(f"Found {len(self.files)} valid audio files")  # Debugging line
 
     def __len__(self):
@@ -141,11 +147,13 @@ for epoch in range(num_epochs):
         pred_labels.extend(preds.cpu().numpy())
 
         loop.set_postfix(loss=loss.item(), acc=100 * correct / total)
-
-    print(f"Epoch {epoch+1}: Loss = {running_loss / len(train_loader):.4f}, Accuracy = {100 * correct / total:.2f}%")
+    loss = running_loss / len(train_loader)
+    acc = 100 * correct / total
+    print(f"Epoch {epoch+1}: Loss = {loss}, Accuracy = {acc}%")
+    wandb.log({"Accuracy": acc, "Loss": loss})
 
 # Save Fine-tuned Model
-model.save_pretrained("asvspoof-ast-model")
+#model.save_pretrained("asvspoof-ast-model")
 
 
 # confuse matrix
