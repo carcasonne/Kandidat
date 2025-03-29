@@ -124,6 +124,14 @@ if __name__ == "__main__":
     num_ftrs = model.head.in_features
     model.head = nn.Linear(num_ftrs, 2)  # Binary classification (2 classes)
 
+    for param in model.parameters():
+        param.requires_grad = False  # Freeze all layers
+
+    # Unfreeze the final classification layer (classifier head)
+    for param in model.head.parameters():
+        param.requires_grad = True  # Unfreeze the classifier
+
+
     # Move model to device
     model.to(device)
 
