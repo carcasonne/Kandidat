@@ -11,6 +11,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import random
 import wandb
+import plotly.graph_objects as go
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from wandb_login import login
 
 login()
@@ -67,7 +69,7 @@ class ASVspoofDataset(Dataset):
         
         # Keep only files that exist
         self.files = [f for f in self.labels.keys() if os.path.exists((os.path.join(self.data_dir, f)) + ".flac")]
-        self.files = self.files[:500]
+        self.files = self.files[:50]
         print(f"Found {len(self.files)} valid audio files")  # Debugging line
 
     def __len__(self):
@@ -126,6 +128,7 @@ for epoch in range(num_epochs):
     running_loss = 0.0
     correct = 0
     total = 0
+    true_labels, pred_labels = [], []  # Lists to store predictions and true labels
 
     loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")
     for batch in loop:
@@ -139,6 +142,7 @@ for epoch in range(num_epochs):
 
         running_loss += loss.item()
         preds = torch.argmax(outputs, dim=1)
+
         correct += (preds == labels).sum().item()
         total += labels.size(0)
 
@@ -147,13 +151,52 @@ for epoch in range(num_epochs):
         pred_labels.extend(preds.cpu().numpy())
 
         loop.set_postfix(loss=loss.item(), acc=100 * correct / total)
+
+    # Compute Metrics
     loss = running_loss / len(train_loader)
     acc = 100 * correct / total
-    print(f"Epoch {epoch+1}: Loss = {loss}, Accuracy = {acc}%")
-    wandb.log({"Accuracy": acc, "Loss": loss})
+    precision = precision_score(true_labels, pred_labels, average='weighted', zero_division=0)
+    recall = recall_score(true_labels, pred_labels, average='weighted', zero_division=0)
+    f1 = f1_score(true_labels, pred_labels, average='weighted')
+    roc_auc = roc_auc_score(true_labels, pred_labels, multi_class='ovr')  # Adjust based on your task
 
-# Save Fine-tuned Model
-#model.save_pretrained("asvspoof-ast-model")
+    # Confusion Matrix
+    cm = confusion_matrix(true_labels, pred_labels)
+    tn, fp, fn, tp = cm.ravel()
+
+    categories = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
+    values = [acc / 100, precision, recall, f1, roc_auc]  # Normalize accuracy to [0,1]
+    values.append(values[0])  # Close the radar chart
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories + [categories[0]],  # Close the circle
+        fill='toself',
+        name=f'Epoch {epoch + 1}'
+    ))
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
+
+    wandb.log({"conf_mat": wandb.plot.confusion_matrix(probs=None,
+                                                       y_true=true_labels, preds=pred_labels,
+                                                       class_names=["Real","Fake"])})
+
+    # Log to Weights & Biases
+    wandb.log({
+        "Accuracy": acc,
+        "Loss": loss,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1,
+        "ROC AUC": roc_auc,
+        "Spider Plot": fig
+    })
+
+    if epoch % 10 == 0:
+        model.save_pretrained("asvspoof-ast-model")
+
+    print(f"Epoch {epoch+1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}, ROC AUC = {roc_auc:.4f}")
+
 
 
 # confuse matrix
