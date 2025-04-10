@@ -1,4 +1,7 @@
 import os
+
+import librosa
+import soundfile
 import torch
 import torchaudio
 import torch.nn as nn
@@ -81,14 +84,15 @@ class ASVspoofDataset(Dataset):
         file_path = os.path.join(self.data_dir, file_name) + ".flac"
 
         # Load audio
-        waveform, sample_rate = torchaudio.load(file_path)
+        waveform, sample_rate = soundfile.read(file_path)
+
 
         # Resample if needed
         if sample_rate != self.feature_extractor.sampling_rate:
             waveform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=self.feature_extractor.sampling_rate)(waveform)
 
         # Convert to AST-compatible format
-        inputs = self.feature_extractor(waveform.numpy(), sampling_rate=self.feature_extractor.sampling_rate, return_tensors="pt")
+        inputs = self.feature_extractor(waveform, sampling_rate=self.feature_extractor.sampling_rate, return_tensors="pt")
 
         return {
             "input_values": inputs["input_values"].squeeze(0),
