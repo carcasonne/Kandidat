@@ -6,11 +6,12 @@ fake_key_file = os.path.join("../keys/fake")
 bonafide_key_file = os.path.join("../keys/bonafide")
 
 # Read keys
+
 with open(fake_key_file, 'r') as f:
-    fake_files = set(line.strip() for line in f if line.strip())
+    fake_files = set(line.strip() + "npy" for line in f if line.strip())
 
 with open(bonafide_key_file, 'r') as f:
-    bonafide_files = set(line.strip() for line in f if line.strip())
+    bonafide_files = set(line.strip()  + "npy" for line in f if line.strip())
 
 # Create destination directories
 fake_dir = os.path.join("spectrograms/ASVSpoof/fake")
