@@ -23,6 +23,8 @@ os.makedirs(bonafide_dir, exist_ok=True)
 # Move files
 for filename in os.listdir(working_dir):
     src_path = os.path.join(working_dir, filename)
+    print(f"src_path: {src_path}")
+    print(f"filename: {filename}")
 
     # Skip directories and key files themselves
     if os.path.isdir(src_path) or filename in ['fake', 'bonafide']:
