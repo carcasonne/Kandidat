@@ -7,11 +7,15 @@ bonafide_key_file = os.path.join("../keys/bonafide")
 
 # Read keys
 
-with open(fake_key_file, 'r') as f:
-    fake_files = set(line.strip() + "npy" for line in f if line.strip())
+def load_keys(filepath):
+    with open(filepath, 'r') as f:
+        return set(os.path.basename(line.strip()) + '.npy' for line in f if line.strip())
 
-with open(bonafide_key_file, 'r') as f:
-    bonafide_files = set(line.strip()  + "npy" for line in f if line.strip())
+# Load and sanitize keys
+fake_files = load_keys(fake_key_file)
+bonafide_files = load_keys(bonafide_key_file)
+
+
 
 # Create destination directories
 fake_dir = os.path.join("spectrograms/ASVSpoof/fake")
@@ -26,6 +30,8 @@ for filename in os.listdir(working_dir):
     print(f"src_path: {src_path}")
     print(f"filename: {filename}")
 
+    print(f"Loaded {len(fake_files)} fake keys")
+    print(f"Loaded {len(bonafide_files)} bonafide keys")
     # Skip directories and key files themselves
     if os.path.isdir(src_path) or filename in ['fake', 'bonafide']:
         continue
