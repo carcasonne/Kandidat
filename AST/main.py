@@ -65,43 +65,68 @@ def load_labels():
 
 # Custom Dataset Class
 class ASVspoofDataset(Dataset):
-    def __init__(self, data_dir, feature_extractor):
-        self.data_dir = os.path.join(data_dir, "flac")
-        self.feature_extractor = feature_extractor
-        self.labels = load_labels()
-        
-        # Keep only files that exist
-        self.files = [f for f in self.labels.keys() if os.path.exists((os.path.join(self.data_dir, f)) + ".flac")]
-        self.files = self.files[:50]
-        print(f"Found {len(self.files)} valid audio files")  # Debugging line
+    def __init__(self, data_dir, max_per_class=100):
+        self.data_dir = data_dir
+        self.spec_dir = os.path.join(data_dir, "spectrograms")
+
+        self.class_map = {
+            "bonafide": 0,
+            "fake": 1
+        }
+
+        self.files = []
+        for class_name, label in self.class_map.items():
+            class_folder = os.path.join(self.spec_dir, class_name)
+            class_files = [
+                os.path.join(class_folder, file)
+                for file in os.listdir(class_folder)
+                if file.endswith(".npy")
+            ]
+
+            # Limit the number of samples per class if specified
+            if max_per_class is not None:
+                class_files = class_files[:max_per_class]
+
+            self.files.extend([(file_path, label) for file_path in class_files])
+
+        print(f"Loaded {len(self.files)} total spectrograms "
+              f"({max_per_class if max_per_class else 'all'} per class)")
 
     def __len__(self):
         return len(self.files)
 
     def __getitem__(self, idx):
-        file_name = self.files[idx]
-        label = self.labels[file_name]
-        file_path = os.path.join(self.data_dir, file_name) + ".flac"
+        file_path, label = self.files[idx]
 
-        # Load audio
-        waveform, sample_rate = soundfile.read(file_path)
+        # Load precomputed log-mel spectrogram
+        spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
 
+        # Ensure correct shape: (1024, 128)
+        target_frames = 1024
+        num_frames, num_mel_bins = spectrogram.shape
 
-        # Resample if needed
-        if sample_rate != self.feature_extractor.sampling_rate:
-            waveform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=self.feature_extractor.sampling_rate)(waveform)
+        if num_mel_bins != 128:
+            raise ValueError(f"Expected 128 Mel bins, got {num_mel_bins} in file: {file_path}")
 
-        # Convert to AST-compatible format
-        inputs = self.feature_extractor(waveform, sampling_rate=self.feature_extractor.sampling_rate, return_tensors="pt")
+        if num_frames < target_frames:
+            # Pad with zeros at the end
+            pad_amount = target_frames - num_frames
+            spectrogram = np.pad(spectrogram, ((0, pad_amount), (0, 0)), mode='constant')
+        elif num_frames > target_frames:
+            # Center crop
+            start = (num_frames - target_frames) // 2
+            spectrogram = spectrogram[start:start + target_frames, :]
+
+        spectrogram = torch.tensor(spectrogram)  # shape: (1024, 128)
 
         return {
-            "input_values": inputs["input_values"].squeeze(0),
+            "input_values": spectrogram,
             "labels": torch.tensor(label, dtype=torch.long)
         }
 
 # Load dataset
 train_dataset = ASVspoofDataset(DATASET_PATH, feature_extractor)
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
 # Load AST Model for Binary Classification
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
