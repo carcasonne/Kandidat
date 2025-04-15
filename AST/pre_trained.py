@@ -42,7 +42,7 @@ class AudioLabel(Enum):
 class ASVspoofDataset(Dataset):
     def __init__(self, data_dir, max_per_class=100, transform=None):
         self.data_dir = data_dir
-        self.spec_dir = os.path.join(data_dir, "ASVspoof")
+        self.spec_dir = os.path.join(data_dir, "ASVSpoof")
         self.transform = transform
         self.max_per_class = int(max_per_class) if max_per_class is not None else None
 
