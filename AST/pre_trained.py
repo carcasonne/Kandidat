@@ -77,7 +77,7 @@ class ASVspoofDataset(Dataset):
         # Load precomputed log-mel spectrogram
         spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
         spectrogram = spectrogram.T
-
+        spectrogram = torch.from_numpy(spectrogram)
         if self.transform:
             spectrogram = self.transform(spectrogram)
 
