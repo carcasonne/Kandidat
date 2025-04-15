@@ -120,7 +120,6 @@ num_epochs = 5
 # Define Data Transforms
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    transforms.ToTensor(),
     transforms.Normalize(mean=[0.485], std=[0.229]),
 ])
 
