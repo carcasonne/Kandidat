@@ -19,8 +19,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from wandb_login import login
 
 login()
-
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
+
+samples = 500
+epochs = 10
+
 
 # Define dataset path
 DATASET_PATH = r"spectrograms"  # Adjust as needed
@@ -34,34 +37,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Load Feature Extractor
 feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
 
-# Load file names and labels
-def load_labels():
-    bonafide_path = os.path.join(DATASET_PATH, "bonafide")
-    fake_path = os.path.join(DATASET_PATH, "fake")
-
-    labels = []
-
-    count = 0
-    # Read bonafide labels
-    with open(bonafide_path, "r") as f:
-        for line in f:
-            labels.append((line.strip(), 0))  # Bonafide (Real)
-
-    # Read fake labels
-    with open(fake_path, "r") as f:
-        for line in f:
-            if(count > 5000):
-                continue
-            count = count + 1
-            labels.append((line.strip(), 1))  # Fake (Deepfake)
-
-    # Shuffle the list of labels to randomize the order
-    random.shuffle(labels)
-
-    # Convert back to a dictionary if needed (optional)
-    labels_dict = {filename: label for filename, label in labels}
-
-    return labels_dict
 
 # Custom Dataset Class
 class ASVspoofDataset(Dataset):
@@ -127,7 +102,7 @@ class ASVspoofDataset(Dataset):
         }
 
 # Load dataset
-train_dataset = ASVspoofDataset(DATASET_PATH)
+train_dataset = ASVspoofDataset(DATASET_PATH, samples)
 train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 
 # Load AST Model for Binary Classification
@@ -153,7 +128,7 @@ true_labels = []
 pred_labels = []
 
 # Training Loop
-num_epochs = 50
+num_epochs = epochs
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
@@ -183,20 +158,19 @@ for epoch in range(num_epochs):
 
         loop.set_postfix(loss=loss.item(), acc=100 * correct / total)
 
-    # Compute Metrics
-    loss = running_loss / len(train_loader)
-    acc = 100 * correct / total
-    precision = precision_score(true_labels, pred_labels, average='weighted', zero_division=0)
-    recall = recall_score(true_labels, pred_labels, average='weighted', zero_division=0)
-    f1 = f1_score(true_labels, pred_labels, average='weighted')
-    roc_auc = roc_auc_score(true_labels, pred_labels, multi_class='ovr')  # Adjust based on your task
-
     # Confusion Matrix
     cm = confusion_matrix(true_labels, pred_labels)
     tn, fp, fn, tp = cm.ravel()
 
+    # Compute Metrics
+    loss = running_loss / len(train_loader)
+    acc = (tp + tn) / (tp + tn + fp + fn)
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = (2 * tp) / ((2 * tp) + fp + fn)
+
     categories = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
-    values = [acc / 100, precision, recall, f1, roc_auc]  # Normalize accuracy to [0,1]
+    values = [acc / 100, precision, recall, f1]  # Normalize accuracy to [0,1]
     values.append(values[0])  # Close the radar chart
 
     fig = go.Figure()
@@ -219,14 +193,13 @@ for epoch in range(num_epochs):
         "Precision": precision,
         "Recall": recall,
         "F1 Score": f1,
-        "ROC AUC": roc_auc,
         "Spider Plot": fig
     })
 
     if epoch % 10 == 0:
         model.save_pretrained("asvspoof-ast-model")
 
-    print(f"Epoch {epoch+1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}, ROC AUC = {roc_auc:.4f}")
+    print(f"Epoch {epoch+1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
 
 
 
