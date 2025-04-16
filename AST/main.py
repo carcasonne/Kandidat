@@ -40,7 +40,7 @@ feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
 
 # Custom Dataset Class
 class ASVspoofDataset(Dataset):
-    def __init__(self, data_dir, max_per_class=5000):
+    def __init__(self, data_dir, max_per_class=50):
         self.data_dir = data_dir
         self.spec_dir = os.path.join(data_dir, "ASVSpoof")
 
@@ -61,6 +61,8 @@ class ASVspoofDataset(Dataset):
             ]
 
             if self.max_per_class is not None:
+                if self.max_per_class < len(class_files):
+                    self.max_per_class = len(class_files)
                 class_files = class_files[:self.max_per_class]
 
             self.files.extend([(file_path, label) for file_path in class_files])
