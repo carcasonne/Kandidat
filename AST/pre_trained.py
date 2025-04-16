@@ -18,6 +18,8 @@ import random
 import wandb
 import plotly.graph_objects as go
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+
+from attention_map import calc_attention_maps
 from wandb_login import login
 
 import timm
@@ -33,6 +35,7 @@ batch_size = 16
 learning_rate = 1e-4
 num_epochs = 5
 pretrain_max_samples = 10
+attention_maps = True
 
 class DataType(Enum):
     TRAINING = "training"
@@ -205,11 +208,14 @@ for epoch in range(num_epochs):
             "Spider Plot": fig
         })
 
-        if epoch % 10 == 0:
+        if epoch % 10 == 0 and epoch != 0:
             model.save_pretrained("asvspoof-ast-model")
 
         print(
             f"Epoch {epoch + 1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
+
+if attention_maps:
+    calc_attention_maps(model,"pre_train", device, train_dataset, 20)
 """
 # Validation Loop
 model.eval()

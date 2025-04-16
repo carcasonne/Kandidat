@@ -16,13 +16,16 @@ import random
 import wandb
 import plotly.graph_objects as go
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+
+from attention_map import calc_attention_maps
 from wandb_login import login
 
 login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
-samples = 500
-epochs = 10
+samples = 20
+epochs = 1
+attention_maps = True
 
 
 # Define dataset path
@@ -198,21 +201,10 @@ for epoch in range(num_epochs):
         "Spider Plot": fig
     })
 
-    if epoch % 10 == 0:
+    if epoch % 10 == 0 and epoch != 0:
         model.save_pretrained("asvspoof-ast-model")
 
     print(f"Epoch {epoch+1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
 
-
-
-# confuse matrix
-cm = confusion_matrix(true_labels, pred_labels)
-print("Confusion Matrix:\n", cm)
-
-# Plot confusion matrix
-plt.figure(figsize=(6, 5))
-sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", xticklabels=["Bonafide", "Fake"], yticklabels=["Bonafide", "Fake"])
-plt.xlabel("Predicted Label")
-plt.ylabel("True Label")
-plt.title("Confusion Matrix")
-plt.show()
+if attention_maps:
+    calc_attention_maps(model, "AST", device, train_dataset, 20)
