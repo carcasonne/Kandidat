@@ -29,6 +29,11 @@ from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from torch.utils.data import random_split
 
+batch_size = 16
+learning_rate = 1e-4
+num_epochs = 5
+pretrain_max_samples = 10
+
 class DataType(Enum):
     TRAINING = "training"
     VALIDATION = "validation"
@@ -112,11 +117,6 @@ for param in model.head.parameters():
 # Move model to device
 model.to(device)
 
-# Define Hyperparameters
-batch_size = 16
-learning_rate = 1e-4
-num_epochs = 5
-
 # Define Data Transforms
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -124,7 +124,7 @@ transform = transforms.Compose([
 ])
 
 DATASET_PATH = r"spectrograms"
-train_dataset = ASVspoofDataset(DATASET_PATH, max_per_class=50, transform=transform)
+train_dataset = ASVspoofDataset(DATASET_PATH, max_per_class=pretrain_max_samples, transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
 
@@ -165,45 +165,49 @@ for epoch in range(num_epochs):
 
         loop.set_postfix(loss=loss.item(), acc=100 * correct / total)
 
-    # Compute Metrics
-    loss = running_loss / len(train_loader)
-    acc = 100 * correct / total
-    precision = precision_score(true_labels, pred_labels, average='weighted', zero_division=0)
-    recall = recall_score(true_labels, pred_labels, average='weighted', zero_division=0)
-    f1 = f1_score(true_labels, pred_labels, average='weighted')
-    roc_auc = roc_auc_score(true_labels, pred_labels, multi_class='ovr')  # Adjust based on your task
+        # Confusion Matrix
+        cm = confusion_matrix(true_labels, pred_labels)
+        tn, fp, fn, tp = cm.ravel()
 
-    # Confusion Matrix
-    cm = confusion_matrix(true_labels, pred_labels)
-    tn, fp, fn, tp = cm.ravel()
+        # Compute Metrics
+        loss = running_loss / len(train_loader)
+        acc = (tp + tn) / (tp + tn + fp + fn)
+        precision = tp / (tp + fp)
+        recall = tp / (tp + fn)
+        f1 = (2 * tp) / ((2 * tp) + fp + fn)
 
-    categories = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
-    values = [acc / 100, precision, recall, f1, roc_auc]  # Normalize accuracy to [0,1]
-    values.append(values[0])  # Close the radar chart
+        categories = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
+        values = [acc / 100, precision, recall, f1]  # Normalize accuracy to [0,1]
+        values.append(values[0])  # Close the radar chart
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=values,
-        theta=categories + [categories[0]],  # Close the circle
-        fill='toself',
-        name=f'Epoch {epoch + 1}'
-    ))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
+        fig = go.Figure()
+        fig.add_trace(go.Scatterpolar(
+            r=values,
+            theta=categories + [categories[0]],  # Close the circle
+            fill='toself',
+            name=f'Epoch {epoch + 1}'
+        ))
+        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
 
-    wandb.log({"conf_mat": wandb.plot.confusion_matrix(probs=None,
-                                                       y_true=true_labels, preds=pred_labels,
-                                                       class_names=["Real", "Fake"])})
+        wandb.log({"conf_mat": wandb.plot.confusion_matrix(probs=None,
+                                                           y_true=true_labels, preds=pred_labels,
+                                                           class_names=["Real", "Fake"])})
 
-    # Log to Weights & Biases
-    wandb.log({
-        "Accuracy": acc,
-        "Loss": loss,
-        "Precision": precision,
-        "Recall": recall,
-        "F1 Score": f1,
-        "ROC AUC": roc_auc,
-        "Spider Plot": fig
-    })
+        # Log to Weights & Biases
+        wandb.log({
+            "Accuracy": acc,
+            "Loss": loss,
+            "Precision": precision,
+            "Recall": recall,
+            "F1 Score": f1,
+            "Spider Plot": fig
+        })
+
+        if epoch % 10 == 0:
+            model.save_pretrained("asvspoof-ast-model")
+
+        print(
+            f"Epoch {epoch + 1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
 """
 # Validation Loop
 model.eval()
