@@ -1,5 +1,5 @@
 import os
-
+import numpy as np
 import librosa
 import soundfile
 import torch
@@ -23,7 +23,7 @@ login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
 # Define dataset path
-DATASET_PATH = r"../ASVspoof2021_DF_eval"  # Adjust as needed
+DATASET_PATH = r"spectrograms"  # Adjust as needed
 
 # AST Pretrained Model
 MODEL_NAME = "MIT/ast-finetuned-audioset-10-10-0.4593"
@@ -40,7 +40,7 @@ def load_labels():
     fake_path = os.path.join(DATASET_PATH, "fake")
 
     labels = []
-    
+
     count = 0
     # Read bonafide labels
     with open(bonafide_path, "r") as f:
@@ -65,9 +65,11 @@ def load_labels():
 
 # Custom Dataset Class
 class ASVspoofDataset(Dataset):
-    def __init__(self, data_dir, max_per_class=100):
+    def __init__(self, data_dir, max_per_class=5000):
         self.data_dir = data_dir
-        self.spec_dir = os.path.join(data_dir, "spectrograms")
+        self.spec_dir = os.path.join(data_dir, "ASVSpoof")
+
+        self.max_per_class = int(max_per_class) if max_per_class is not None else None
 
         self.class_map = {
             "bonafide": 0,
@@ -83,14 +85,13 @@ class ASVspoofDataset(Dataset):
                 if file.endswith(".npy")
             ]
 
-            # Limit the number of samples per class if specified
-            if max_per_class is not None:
-                class_files = class_files[:max_per_class]
+            if self.max_per_class is not None:
+                class_files = class_files[:self.max_per_class]
 
             self.files.extend([(file_path, label) for file_path in class_files])
 
         print(f"Loaded {len(self.files)} total spectrograms "
-              f"({max_per_class if max_per_class else 'all'} per class)")
+                f"({self.max_per_class if self.max_per_class else 'all'} per class)")
 
     def __len__(self):
         return len(self.files)
@@ -100,6 +101,7 @@ class ASVspoofDataset(Dataset):
 
         # Load precomputed log-mel spectrogram
         spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
+        spectrogram = spectrogram.T
 
         # Ensure correct shape: (1024, 128)
         target_frames = 1024
@@ -125,8 +127,8 @@ class ASVspoofDataset(Dataset):
         }
 
 # Load dataset
-train_dataset = ASVspoofDataset(DATASET_PATH, feature_extractor)
-train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+train_dataset = ASVspoofDataset(DATASET_PATH)
+train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 
 # Load AST Model for Binary Classification
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
@@ -151,7 +153,7 @@ true_labels = []
 pred_labels = []
 
 # Training Loop
-num_epochs = 5
+num_epochs = 50
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
