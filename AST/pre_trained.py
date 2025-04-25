@@ -69,7 +69,7 @@ class ASVspoofDataset(Dataset):
             ]
 
             if self.max_per_class is not None:
-                if self.max_per_class < len(class_files):
+                if self.max_per_class > len(class_files):
                     self.max_per_class = len(class_files)
                 class_files = class_files[:self.max_per_class]
 
