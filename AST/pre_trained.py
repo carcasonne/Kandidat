@@ -118,6 +118,11 @@ for param in model.parameters():
 for param in model.head.parameters():
     param.requires_grad = True  # Unfreeze the classifier
 
+# Unfreeze the layer before the head (typically the final transformer block)
+# In ViT, this is usually the last block in model.blocks
+for param in model.blocks[-1].parameters():
+    param.requires_grad = True
+
 
 # Move model to device
 model.to(device)
