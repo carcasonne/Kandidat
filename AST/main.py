@@ -117,6 +117,12 @@ model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
 model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)  # Change output layer
 model.classifier.out_proj = nn.Linear(2, 2)  # Adjust projection layer
 
+# Freezing to allow inly finetuning some parts
+N = 10
+for i in range(N):
+    for param in model.ast.encoder.layer[i].parameters():
+        param.requires_grad = False
+
 # Update the config
 model.config.num_labels = 2
 model.config.id2label = {0: "bonafide", 1: "spoof"}
