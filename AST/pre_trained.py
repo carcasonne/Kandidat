@@ -33,8 +33,8 @@ from torch.utils.data import random_split
 
 batch_size = 16
 learning_rate = 1e-4
-num_epochs = 5
-pretrain_max_samples = 10
+num_epochs = 2
+pretrain_max_samples = 200
 attention_maps = True
 
 class DataType(Enum):

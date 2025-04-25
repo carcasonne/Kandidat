@@ -23,8 +23,8 @@ from wandb_login import login
 login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
-samples = 20
-epochs = 1
+samples = 20000
+epochs = 50
 attention_maps = True
 
 
@@ -108,7 +108,7 @@ class ASVspoofDataset(Dataset):
 
 # Load dataset
 train_dataset = ASVspoofDataset(DATASET_PATH, samples)
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
 
 # Load AST Model for Binary Classification
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
