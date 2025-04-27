@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from enum import Enum
 
 import librosa
@@ -175,49 +176,50 @@ for epoch in range(num_epochs):
 
         loop.set_postfix(loss=loss.item(), acc=100 * correct / total)
 
-        # Confusion Matrix
-        cm = confusion_matrix(true_labels, pred_labels)
-        tn, fp, fn, tp = cm.ravel()
+    # Confusion Matrix
+    cm = confusion_matrix(true_labels, pred_labels)
+    tn, fp, fn, tp = cm.ravel()
 
-        # Compute Metrics
-        loss = running_loss / len(train_loader)
-        acc = (tp + tn) / (tp + tn + fp + fn)
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
-        f1 = (2 * tp) / ((2 * tp) + fp + fn)
+    # Compute Metrics
+    loss = running_loss / len(train_loader)
+    acc = (tp + tn) / (tp + tn + fp + fn)
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    f1 = (2 * tp) / ((2 * tp) + fp + fn)
 
-        categories = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
-        values = [acc / 100, precision, recall, f1]  # Normalize accuracy to [0,1]
-        values.append(values[0])  # Close the radar chart
+    categories = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC']
+    values = [acc / 100, precision, recall, f1]  # Normalize accuracy to [0,1]
+    values.append(values[0])  # Close the radar chart
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatterpolar(
-            r=values,
-            theta=categories + [categories[0]],  # Close the circle
-            fill='toself',
-            name=f'Epoch {epoch + 1}'
-        ))
-        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories + [categories[0]],  # Close the circle
+        fill='toself',
+        name=f'Epoch {epoch + 1}'
+    ))
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
 
-        wandb.log({"conf_mat": wandb.plot.confusion_matrix(probs=None,
-                                                           y_true=true_labels, preds=pred_labels,
-                                                           class_names=["Real", "Fake"])})
+    wandb.log({"conf_mat": wandb.plot.confusion_matrix(probs=None,
+                                                       y_true=true_labels, preds=pred_labels,
+                                                       class_names=["Real", "Fake"])})
 
-        # Log to Weights & Biases
-        wandb.log({
-            "Accuracy": acc,
-            "Loss": loss,
-            "Precision": precision,
-            "Recall": recall,
-            "F1 Score": f1,
-            "Spider Plot": fig
-        })
+    # Log to Weights & Biases
+    wandb.log({
+        "Accuracy": acc,
+        "Loss": loss,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 Score": f1,
+        "Spider Plot": fig
+    })
+    if epoch % 5 == 0 and epoch < 10:
+        date = datetime.now()
+        timestamp = date.strftime("%Y-%m-%d_%H-%M-%S")
+        torch.save(model.state_dict(), f'./checkpoints/pre_trained_{epoch}_{timestamp}.pth')
 
-        if epoch % 10 == 0 and epoch != 0:
-            model.save_pretrained("asvspoof-ast-model")
-
-        print(
-            f"Epoch {epoch + 1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
+    print(
+        f"Epoch {epoch + 1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
 
 if attention_maps:
     calc_attention_maps(model,"pre_train", device, train_dataset, 20)
