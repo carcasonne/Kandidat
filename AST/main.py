@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+
 import numpy as np
 import librosa
 import soundfile
@@ -23,8 +25,8 @@ from wandb_login import login
 login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
-samples = 20000
-epochs = 50
+samples = 300000
+epochs = 20
 attention_maps = True
 
 
@@ -119,8 +121,8 @@ model.classifier.out_proj = nn.Linear(2, 2)  # Adjust projection layer
 
 # Freezing to allow inly finetuning some parts
 N = 10
-for i in range(N):
-    for param in model.ast.encoder.layer[i].parameters():
+for i in range(N):  # Layers 0 to 9
+    for param in model.audio_spectrogram_transformer.encoder.layer[i].parameters():
         param.requires_grad = False
 
 # Update the config
@@ -207,10 +209,16 @@ for epoch in range(num_epochs):
         "Spider Plot": fig
     })
 
-    if epoch % 10 == 0 and epoch != 0:
-        model.save_pretrained("asvspoof-ast-model")
+    if (epoch % 5 == 0 and epoch > 10) or epoch == 19:
+        save_dir = "checkpoints"
+        os.makedirs(save_dir, exist_ok=True)
+
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save = os.path.join(save_dir,f"asvspoof-ast-model{epoch}_{date}")
+        model.save_pretrained(save)
 
     print(f"Epoch {epoch+1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
 
-if attention_maps:
-    calc_attention_maps(model, "AST", device, train_dataset, 20)
+#shit is so aids I cant take it anymore
+#if attention_maps:
+#    calc_attention_maps(model, "AST", device, train_dataset, 20)

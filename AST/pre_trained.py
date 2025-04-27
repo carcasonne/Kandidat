@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
 from enum import Enum
-
 import librosa
 import numpy as np
 import soundfile
@@ -34,9 +33,8 @@ from torch.utils.data import random_split
 
 batch_size = 16
 learning_rate = 1e-4
-num_epochs = 2
-pretrain_max_samples = 200
-attention_maps = True
+num_epochs = 20
+pretrain_max_samples = 300000
 
 class DataType(Enum):
     TRAINING = "training"
@@ -123,6 +121,8 @@ for param in model.head.parameters():
 # In ViT, this is usually the last block in model.blocks
 for param in model.blocks[-1].parameters():
     param.requires_grad = True
+
+
 
 
 # Move model to device
@@ -213,16 +213,20 @@ for epoch in range(num_epochs):
         "F1 Score": f1,
         "Spider Plot": fig
     })
-    if epoch % 5 == 0 and epoch < 10:
-        date = datetime.now()
-        timestamp = date.strftime("%Y-%m-%d_%H-%M-%S")
-        torch.save(model.state_dict(), f'./checkpoints/pre_trained_{epoch}_{timestamp}.pth')
+    if (epoch % 5 == 0 and epoch > 10) or epoch == 19:
+        save_dir = "checkpoints"
+        os.makedirs(save_dir, exist_ok=True)
+
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save = os.path.join(save_dir, f"asvspoof-pretrain-model{epoch}_{date}")
+
+        torch.save(model.state_dict(), save)
+
 
     print(
         f"Epoch {epoch + 1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
 
-if attention_maps:
-    calc_attention_maps(model,"pre_train", device, train_dataset, 20)
+
 """
 # Validation Loop
 model.eval()
