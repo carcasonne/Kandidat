@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#SBATCH --job-name=analyze-asv21    # Job name
+#SBATCH --output=analyze-ast21.out      # Name of output file (%j expands to jobId)
+#SBATCH --cpus-per-task=4       # Schedule four cores
+#SBATCH --gres=gpu               # Schedule a GPU
+#SBATCH --time=04:00:00          # Run time (hh:mm:ss) - run for one hour max
+
+echo "Running on $(hostname):"
+nvidia-smi  # Display GPU info
+
+echo "-------------------------------"
+echo "Current working directory: $(pwd)"
+echo "-------------------------------"
+
+
+# Load Conda and activate environment
+echo "Trying to load Conda..."
+source /home/alsk/anaconda3/etc/profile.d/conda.sh
+echo "Trying to activate Conda environment 'thesis_env'..."
+conda activate thesis_env
+
+
+# Run the actual Python script
+echo "Running the Python script..."
+python /home/alsk/Kandidat/DataVisualization/analyze_asvspoof.py --data_dir "/home/alsk/Kandidat/AST/spectrograms/ASVSpoof" --output_dir "/home/alsk/Kandidat/DataVisualization/JobOutput" --max_files 10
+
+echo "Job completed successfully."
