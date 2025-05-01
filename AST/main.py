@@ -25,7 +25,7 @@ from wandb_login import login
 login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
-samples = 300000
+samples = {"bonafide": 22600, "fake":300000}
 epochs = 20
 attention_maps = True
 
@@ -45,16 +45,21 @@ feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
 
 # Custom Dataset Class
 class ASVspoofDataset(Dataset):
-    def __init__(self, data_dir, max_per_class=50):
+    def __init__(self, data_dir, max_per_class=None, transform=None):
         self.data_dir = data_dir
         self.spec_dir = os.path.join(data_dir, "ASVSpoof")
-
-        self.max_per_class = int(max_per_class) if max_per_class is not None else None
+        self.transform = transform
 
         self.class_map = {
             "bonafide": 0,
             "fake": 1
         }
+
+        # If a single int is passed, convert to dict with same value for all classes
+        if isinstance(max_per_class, int):
+            self.max_per_class = {class_name: max_per_class for class_name in self.class_map}
+        else:
+            self.max_per_class = max_per_class  # Can be None or a dict per class
 
         self.files = []
         for class_name, label in self.class_map.items():
@@ -65,15 +70,13 @@ class ASVspoofDataset(Dataset):
                 if file.endswith(".npy")
             ]
 
-            if self.max_per_class is not None:
-                if self.max_per_class > len(class_files):
-                    self.max_per_class = len(class_files)
-                class_files = class_files[:self.max_per_class]
+            max_count = self.max_per_class.get(class_name) if self.max_per_class else None
+            if max_count is not None:
+                class_files = class_files[:min(max_count, len(class_files))]
 
             self.files.extend([(file_path, label) for file_path in class_files])
 
-        print(f"Loaded {len(self.files)} total spectrograms "
-                f"({self.max_per_class if self.max_per_class else 'all'} per class)")
+        print(f"Loaded {len(self.files)} total spectrograms.")
 
     def __len__(self):
         return len(self.files)
@@ -86,11 +89,9 @@ class ASVspoofDataset(Dataset):
         spectrogram = spectrogram.T
 
         # Ensure correct shape: (1024, 128)
-        target_frames = 1024
+        target_frames = 512
         num_frames, num_mel_bins = spectrogram.shape
-
-        if num_mel_bins != 128:
-            raise ValueError(f"Expected 128 Mel bins, got {num_mel_bins} in file: {file_path}")
+        print(f"frames = {num_frames}")
 
         if num_frames < target_frames:
             # Pad with zeros at the end
@@ -101,7 +102,8 @@ class ASVspoofDataset(Dataset):
             start = (num_frames - target_frames) // 2
             spectrogram = spectrogram[start:start + target_frames, :]
 
-        spectrogram = torch.tensor(spectrogram)  # shape: (1024, 128)
+
+        spectrogram = torch.tensor(spectrogram)  # shape: (512, 128)
 
         return {
             "input_values": spectrogram,
@@ -110,14 +112,14 @@ class ASVspoofDataset(Dataset):
 
 # Load dataset
 train_dataset = ASVspoofDataset(DATASET_PATH, samples)
-train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
 # Load AST Model for Binary Classification
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
 
 # Modify the classifier for 2 classes
 model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)  # Change output layer
-model.classifier.out_proj = nn.Linear(2, 2)  # Adjust projection layer
+model.classifier.out_proj = nn. Linear(2, 2)  # Adjust projection layer
 
 # Freezing to allow inly finetuning some parts
 N = 10

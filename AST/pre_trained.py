@@ -34,7 +34,7 @@ from torch.utils.data import random_split
 batch_size = 16
 learning_rate = 1e-4
 num_epochs = 20
-pretrain_max_samples = 300000
+pretrain_max_samples = {"bonafide": 22600, "fake":300000}
 
 class DataType(Enum):
     TRAINING = "training"
@@ -47,16 +47,21 @@ class AudioLabel(Enum):
 
 
 class ASVspoofDataset(Dataset):
-    def __init__(self, data_dir, max_per_class=100, transform=None):
+    def __init__(self, data_dir, max_per_class=None, transform=None):
         self.data_dir = data_dir
         self.spec_dir = os.path.join(data_dir, "ASVSpoof")
         self.transform = transform
-        self.max_per_class = int(max_per_class) if max_per_class is not None else None
 
         self.class_map = {
             "bonafide": 0,
             "fake": 1
         }
+
+        # If a single int is passed, convert to dict with same value for all classes
+        if isinstance(max_per_class, int):
+            self.max_per_class = {class_name: max_per_class for class_name in self.class_map}
+        else:
+            self.max_per_class = max_per_class  # Can be None or a dict per class
 
         self.files = []
         for class_name, label in self.class_map.items():
@@ -67,15 +72,13 @@ class ASVspoofDataset(Dataset):
                 if file.endswith(".npy")
             ]
 
-            if self.max_per_class is not None:
-                if self.max_per_class > len(class_files):
-                    self.max_per_class = len(class_files)
-                class_files = class_files[:self.max_per_class]
+            max_count = self.max_per_class.get(class_name) if self.max_per_class else None
+            if max_count is not None:
+                class_files = class_files[:min(max_count, len(class_files))]
 
             self.files.extend([(file_path, label) for file_path in class_files])
 
-        print(f"Loaded {len(self.files)} total spectrograms "
-              f"({self.max_per_class if self.max_per_class else 'all'} per class)")
+        print(f"Loaded {len(self.files)} total spectrograms.")
 
     def __len__(self):
         return len(self.files)
