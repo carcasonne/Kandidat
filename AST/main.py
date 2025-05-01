@@ -96,7 +96,7 @@ class ASVspoofDataset(Dataset):
 
 # Load dataset
 train_dataset = ASVspoofDataset(DATASET_PATH, samples)
-train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
 # Load AST Model for Binary Classification
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
