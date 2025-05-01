@@ -87,7 +87,23 @@ class ASVspoofDataset(Dataset):
         # Load precomputed log-mel spectrogram
         spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
         spectrogram = spectrogram.T
-        spectrogram = torch.tensor(spectrogram)  # shape: (1024, 128)
+
+        # Ensure correct shape: (1024, 128)
+        target_frames = 512
+        num_frames, num_mel_bins = spectrogram.shape
+        print(f"frames = {num_frames}")
+
+        if num_frames < target_frames:
+            # Pad with zeros at the end
+            pad_amount = target_frames - num_frames
+            spectrogram = np.pad(spectrogram, ((0, pad_amount), (0, 0)), mode='constant')
+        elif num_frames > target_frames:
+            # Center crop
+            start = (num_frames - target_frames) // 2
+            spectrogram = spectrogram[start:start + target_frames, :]
+
+
+        spectrogram = torch.tensor(spectrogram)  # shape: (512, 128)
 
         return {
             "input_values": spectrogram,
@@ -103,7 +119,7 @@ model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
 
 # Modify the classifier for 2 classes
 model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)  # Change output layer
-model.classifier.out_proj = nn.Linear(2, 2)  # Adjust projection layer
+model.classifier.out_proj = nn. Linear(2, 2)  # Adjust projection layer
 
 # Freezing to allow inly finetuning some parts
 N = 10
