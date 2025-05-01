@@ -694,7 +694,7 @@ class DatasetAnalyzer:
         print(f"Frequency patterns visualization saved to {output_path}")
         
         return fig
-    
+
     def run_comprehensive_analysis(self, max_files=100, output_prefix="asvspoof_"):
         """
         Run a comprehensive analysis of the dataset and save all visualizations.
@@ -713,9 +713,23 @@ class DatasetAnalyzer:
         stats = self.get_dataset_statistics(max_files)
         
         # Save statistics to JSON file
+
+        def convert_keys_to_str(obj):
+            """Convert all dictionary keys to strings recursively."""
+            if isinstance(obj, dict):
+                return {str(k): convert_keys_to_str(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_keys_to_str(item) for item in obj]
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, np.number):
+                return obj.item()
+            else:
+                return obj
+
         import json
         with open(os.path.join(self.output_dir, f"{output_prefix}statistics.json"), 'w') as f:
-            # Convert numpy types to Python native types for JSON serialization
+            # First convert numpy types to Python native types for JSON serialization
             stats_serializable = {}
             for category, values in stats.items():
                 if isinstance(values, dict):
@@ -728,25 +742,21 @@ class DatasetAnalyzer:
                                     stats_serializable[category][key][subkey] = subvalue.tolist()
                                 elif isinstance(subvalue, np.number):
                                     stats_serializable[category][key][subkey] = subvalue.item()
-                                elif isinstance(subvalue, dict) and category == "shapes" and (key == "bonafide_shape_counts" or key == "fake_shape_counts"):
-                                    # Convert tuple keys to string representation
-                                    stats_serializable[category][key][subkey] = {str(shape_key): shape_value 
-                                                                            for shape_key, shape_value in subvalue.items()}
                                 else:
                                     stats_serializable[category][key][subkey] = subvalue
                         elif isinstance(value, np.ndarray):
                             stats_serializable[category][key] = value.tolist()
                         elif isinstance(value, np.number):
                             stats_serializable[category][key] = value.item()
-                        elif isinstance(value, dict) and category == "shapes" and (key == "bonafide_shape_counts" or key == "fake_shape_counts"):
-                            # Convert tuple keys to string representation
-                            stats_serializable[category][key] = {str(shape_key): shape_value 
-                                                            for shape_key, shape_value in value.items()}
                         else:
                             stats_serializable[category][key] = value
                 else:
                     stats_serializable[category] = values
             
+            # Now convert any tuple keys to strings
+            stats_serializable = convert_keys_to_str(stats_serializable)
+            
+            # Dump to JSON
             json.dump(stats_serializable, f, indent=4)
         
         print("Creating dataset balance visualization...")
