@@ -728,12 +728,20 @@ class DatasetAnalyzer:
                                     stats_serializable[category][key][subkey] = subvalue.tolist()
                                 elif isinstance(subvalue, np.number):
                                     stats_serializable[category][key][subkey] = subvalue.item()
+                                elif isinstance(subvalue, dict) and category == "shapes" and (key == "bonafide_shape_counts" or key == "fake_shape_counts"):
+                                    # Convert tuple keys to string representation
+                                    stats_serializable[category][key][subkey] = {str(shape_key): shape_value 
+                                                                            for shape_key, shape_value in subvalue.items()}
                                 else:
                                     stats_serializable[category][key][subkey] = subvalue
                         elif isinstance(value, np.ndarray):
                             stats_serializable[category][key] = value.tolist()
                         elif isinstance(value, np.number):
                             stats_serializable[category][key] = value.item()
+                        elif isinstance(value, dict) and category == "shapes" and (key == "bonafide_shape_counts" or key == "fake_shape_counts"):
+                            # Convert tuple keys to string representation
+                            stats_serializable[category][key] = {str(shape_key): shape_value 
+                                                            for shape_key, shape_value in value.items()}
                         else:
                             stats_serializable[category][key] = value
                 else:
