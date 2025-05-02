@@ -23,6 +23,6 @@ conda activate thesis_env
 
 # Run the actual Python script
 echo "Running the Python script..."
-python /home/alsk/Kandidat/DataVisualization/analyze_asvspoof.py --data_dir "/home/alsk/Kandidat/AST/spectrograms/ASVSpoof" --output_dir "/home/alsk/Kandidat/DataVisualization/JobOutput" --max_files 10
+python /home/vson/Kandidat/DataVisualization/main.py
 
 echo "Job completed successfully."
