@@ -88,8 +88,9 @@ class ASVspoofDataset(Dataset):
         spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
         spectrogram = spectrogram.T
 
-        # Ensure correct shape: (1024, 128)
-        target_frames = 512
+        # Ensure correct shape: (300, 128)
+        # 300 since this is the average
+        target_frames = 300
         num_frames, num_mel_bins = spectrogram.shape
         print(f"frames = {num_frames}")
 
@@ -103,7 +104,7 @@ class ASVspoofDataset(Dataset):
             spectrogram = spectrogram[start:start + target_frames, :]
 
 
-        spectrogram = torch.tensor(spectrogram)  # shape: (512, 128)
+        spectrogram = torch.tensor(spectrogram)  # shape: (300, 128)
 
         return {
             "input_values": spectrogram,
