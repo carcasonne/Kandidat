@@ -9,7 +9,7 @@ import torchaudio
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from transformers import AutoFeatureExtractor, ASTForAudioClassification
+from transformers import AutoFeatureExtractor, ASTForAudioClassification, ASTConfig, ASTModel
 from tqdm import tqdm
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
@@ -92,7 +92,6 @@ class ASVspoofDataset(Dataset):
         # 300 since this is the average
         target_frames = 300
         num_frames, num_mel_bins = spectrogram.shape
-        print(f"frames = {num_frames}")
 
         if num_frames < target_frames:
             # Pad with zeros at the end
@@ -116,7 +115,9 @@ train_dataset = ASVspoofDataset(DATASET_PATH, samples)
 train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
 # Load AST Model for Binary Classification
-model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
+#model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
+config = ASTConfig(max_length=300)
+model = ASTModel(config)
 
 # Modify the classifier for 2 classes
 model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)  # Change output layer
