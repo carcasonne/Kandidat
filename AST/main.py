@@ -25,8 +25,8 @@ from wandb_login import login
 login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
-samples = {"bonafide": 22600, "fake":300000}
-epochs = 20
+samples = {"bonafide": 22600, "fake":100000}
+epochs = 10
 attention_maps = True
 
 
@@ -212,7 +212,7 @@ for epoch in range(num_epochs):
         "Spider Plot": fig
     })
 
-    if (epoch % 5 == 0 and epoch > 10) or epoch == 19:
+    if (epoch % 5 == 0 and epoch != 0) or epoch == epochs:
         save_dir = "checkpoints"
         os.makedirs(save_dir, exist_ok=True)
 

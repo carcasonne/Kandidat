@@ -34,7 +34,7 @@ from torch.utils.data import random_split
 batch_size = 16
 learning_rate = 1e-4
 num_epochs = 20
-pretrain_max_samples = {"bonafide": 22600, "fake":300000}
+pretrain_max_samples = {"bonafide": 22600, "fake":100000}
 
 class DataType(Enum):
     TRAINING = "training"
@@ -216,7 +216,7 @@ for epoch in range(num_epochs):
         "F1 Score": f1,
         "Spider Plot": fig
     })
-    if (epoch % 5 == 0 and epoch > 10) or epoch == 19:
+    if (epoch % 5 == 0 and epoch != 0) or epoch == num_epochs:
         save_dir = "checkpoints"
         os.makedirs(save_dir, exist_ok=True)
 
