@@ -34,7 +34,7 @@ from torch.utils.data import random_split
 batch_size = 16
 learning_rate = 1e-4
 num_epochs = 20
-pretrain_max_samples = {"bonafide": 22600, "fake":100000}
+pretrain_max_samples = {"bonafide": 2000, "fake":2000}
 
 class DataType(Enum):
     TRAINING = "training"
@@ -139,7 +139,23 @@ transform = transforms.Compose([
 
 DATASET_PATH = r"spectrograms"
 train_dataset = ASVspoofDataset(DATASET_PATH, max_per_class=pretrain_max_samples, transform=transform)
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+# Set validation split ratio
+val_split = 0.2
+total_len = len(train_dataset)
+val_len = int(total_len * val_split)
+train_len = total_len - val_len
+
+# Ensure reproducibility
+generator = torch.Generator()
+seed = generator.seed()
+# Split
+train_subset, val_subset = random_split(train_dataset, [train_len, val_len], generator=generator)
+
+# DataLoaders
+train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=True)
+
 
 
 # Define Loss Function & Optimizer
@@ -214,7 +230,60 @@ for epoch in range(num_epochs):
         "Precision": precision,
         "Recall": recall,
         "F1 Score": f1,
-        "Spider Plot": fig
+        "Spider Plot": fig,
+        "Seed": seed
+    })
+
+    # ---------- VALIDATION ----------
+    model.eval()
+    val_loss = 0.0
+    val_correct, val_total = 0, 0
+    val_true_labels, val_pred_labels = [], []
+
+    with torch.no_grad():
+        for images, labels in tqdm(val_loader, desc=f"Epoch {epoch + 1} [Validation]"):
+            images, labels = images.to(device), labels.to(device)
+
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            val_loss += loss.item()
+            preds = torch.argmax(outputs, dim=1)
+            val_correct += (preds == labels).sum().item()
+            val_total += labels.size(0)
+
+            val_true_labels.extend(labels.cpu().numpy())
+            val_pred_labels.extend(preds.cpu().numpy())
+
+    val_cm = confusion_matrix(val_true_labels, val_pred_labels)
+    tn, fp, fn, tp = val_cm.ravel()
+    val_loss /= len(val_loader)
+    val_acc = (tp + tn) / (tp + tn + fp + fn)
+    val_precision = tp / (tp + fp)
+    val_recall = tp / (tp + fn)
+    val_f1 = (2 * tp) / ((2 * tp) + fp + fn)
+
+    val_values = [val_acc / 100, val_precision, val_recall, val_f1]
+    val_values.append(val_values[0])
+
+    val_fig = go.Figure()
+    val_fig.add_trace(go.Scatterpolar(
+        r=val_values,
+        theta=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC'],
+        fill='toself',
+        name=f'Val Epoch {epoch + 1}'
+    ))
+    val_fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
+
+    wandb.log({
+        "Val Confusion Matrix": wandb.plot.confusion_matrix(probs=None, y_true=val_true_labels, preds=val_pred_labels,
+                                                            class_names=["Real", "Fake"]),
+        "Val Accuracy": val_acc,
+        "Val Loss": val_loss,
+        "Val Precision": val_precision,
+        "Val Recall": val_recall,
+        "Val F1 Score": val_f1,
+        "Val Spider Plot": val_fig
     })
     if (epoch % 5 == 0 and epoch != 0) or epoch == num_epochs:
         save_dir = "checkpoints"
@@ -226,8 +295,9 @@ for epoch in range(num_epochs):
         torch.save(model.state_dict(), save)
 
 
-    print(
-        f"Epoch {epoch + 1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
+    print(f"Epoch {epoch + 1}: Train Loss = {loss:.4f}, Train Acc = {acc:.2f}%, "
+          f"Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.2f}%, "
+          f"Val Precision = {val_precision:.4f}, Val Recall = {val_recall:.4f}, Val F1 = {val_f1:.4f}")
 
 
 """

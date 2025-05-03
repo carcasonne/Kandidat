@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-
+from torch.utils.data import random_split
 import numpy as np
 import librosa
 import soundfile
@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import random
 import wandb
 import plotly.graph_objects as go
+import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 
 from attention_map import calc_attention_maps
@@ -25,8 +26,8 @@ from wandb_login import login
 login()
 wandb.init(project="Kandidat-AST", entity="Holdet_thesis")
 
-samples = {"bonafide": 22600, "fake":100000}
-epochs = 10
+samples = {"bonafide": 2000, "fake":2000}
+epochs = 20
 attention_maps = True
 
 
@@ -90,6 +91,7 @@ class ASVspoofDataset(Dataset):
 
         # Ensure correct shape: (300, 128)
         # 300 since this is the average
+        """"""
         target_frames = 300
         num_frames, num_mel_bins = spectrogram.shape
 
@@ -110,29 +112,63 @@ class ASVspoofDataset(Dataset):
             "labels": torch.tensor(label, dtype=torch.long)
         }
 
-# Load dataset
-train_dataset = ASVspoofDataset(DATASET_PATH, samples)
-train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 
-# Load AST Model for Binary Classification
-#model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
-config = ASTConfig(max_length=300)
-model = ASTModel(config)
+# Your desired model name and input length
+model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
+model.config.max_length = 300
+model.config.num_labels = 2
+model.config.id2label = {0: "bonafide", 1: "spoof"}
+model.config.label2id = {"bonafide": 0, "spoof": 1}
 
 # Modify the classifier for 2 classes
 model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)  # Change output layer
 model.classifier.out_proj = nn. Linear(2, 2)  # Adjust projection layer
 
-# Freezing to allow inly finetuning some parts
+
+# Interpolate positional embeddings
+desired_max_length = 350
+position_embeddings = model.audio_spectrogram_transformer.embeddings.position_embeddings  # shape: (1, old_len, dim)
+old_len = position_embeddings.shape[1]
+if old_len != desired_max_length:
+    print(f"Interpolating position embeddings from {old_len} to {desired_max_length}")
+    # Use interpolation
+    interpolated_pos_emb = F.interpolate(
+        position_embeddings.permute(0, 2, 1),  # shape: (1, dim, old_len)
+        size=desired_max_length,
+        mode="linear",
+        align_corners=False
+    ).permute(0, 2, 1)  # shape back to (1, new_len, dim)
+
+    model.audio_spectrogram_transformer.embeddings.position_embeddings = nn.Parameter(interpolated_pos_emb)
+
+model.to(device)
+
+# Load dataset
+train_dataset = ASVspoofDataset(DATASET_PATH, samples)
+
+# Set validation split ratio
+val_split = 0.2
+total_len = len(train_dataset)
+val_len = int(total_len * val_split)
+train_len = total_len - val_len
+
+# Ensure reproducibility
+generator = torch.Generator()
+seed = generator.seed()
+
+# Split
+train_subset, val_subset = random_split(train_dataset, [train_len, val_len], generator=generator)
+
+# DataLoaders
+train_loader = DataLoader(train_subset, batch_size=16, shuffle=True)
+val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
+
+
 N = 10
 for i in range(N):  # Layers 0 to 9
     for param in model.audio_spectrogram_transformer.encoder.layer[i].parameters():
         param.requires_grad = False
 
-# Update the config
-model.config.num_labels = 2
-model.config.id2label = {0: "bonafide", 1: "spoof"}
-model.config.label2id = {"bonafide": 0, "spoof": 1}
 
 # Move to device
 model.to(device)
@@ -153,7 +189,7 @@ for epoch in range(num_epochs):
     total = 0
     true_labels, pred_labels = [], []  # Lists to store predictions and true labels
 
-    loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}")
+    loop = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Training]")
     for batch in loop:
         inputs, labels = batch["input_values"].to(device), batch["labels"].to(device)
 
@@ -199,19 +235,73 @@ for epoch in range(num_epochs):
     ))
     fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
 
-    wandb.log({"conf_mat": wandb.plot.confusion_matrix(probs=None,
+    wandb.log({"train_conf_mat": wandb.plot.confusion_matrix(probs=None,
                                                        y_true=true_labels, preds=pred_labels,
                                                        class_names=["Real","Fake"])})
 
     # Log to Weights & Biases
     wandb.log({
-        "Accuracy": acc,
-        "Loss": loss,
-        "Precision": precision,
-        "Recall": recall,
-        "F1 Score": f1,
-        "Spider Plot": fig
+        "Train Accuracy": acc,
+        "Train Loss": loss,
+        "Train Precision": precision,
+        "Train Recall": recall,
+        "Train F1 Score": f1,
+        "Train Spider Plot": fig,
+        "Seed": seed
     })
+
+    # --------- VALIDATION LOOP ---------
+    model.eval()
+    val_loss = 0.0
+    val_correct = 0
+    val_total = 0
+    val_true_labels, val_pred_labels = [], []
+
+    with torch.no_grad():
+        for batch in tqdm(val_loader, desc=f"Epoch {epoch + 1}/{num_epochs} [Validation]"):
+            inputs, labels = batch["input_values"].to(device), batch["labels"].to(device)
+
+            outputs = model(input_values=inputs).logits
+            loss = criterion(outputs, labels)
+            val_loss += loss.item()
+
+            preds = torch.argmax(outputs, dim=1)
+            val_correct += (preds == labels).sum().item()
+            val_total += labels.size(0)
+
+            val_true_labels.extend(labels.cpu().numpy())
+            val_pred_labels.extend(preds.cpu().numpy())
+
+    val_cm = confusion_matrix(val_true_labels, val_pred_labels)
+    tn, fp, fn, tp = val_cm.ravel()
+    val_loss /= len(val_loader)
+    val_acc = (tp + tn) / (tp + tn + fp + fn)
+    val_precision = tp / (tp + fp)
+    val_recall = tp / (tp + fn)
+    val_f1 = (2 * tp) / ((2 * tp) + fp + fn)
+    val_values = [val_acc / 100, val_precision, val_recall, val_f1]
+    val_values.append(val_values[0])
+
+    val_fig = go.Figure()
+    val_fig.add_trace(go.Scatterpolar(
+        r=val_values,
+        theta=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'ROC AUC'],
+        fill='toself',
+        name=f'Val Epoch {epoch + 1}'
+    ))
+    val_fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True)
+    wandb.log({"val_conf_mat": wandb.plot.confusion_matrix(probs=None,
+                                                             y_true=val_true_labels, preds=val_pred_labels,
+                                                             class_names=["Real", "Fake"])})
+    wandb.log({
+        "Val Accuracy": val_acc,
+        "Val Loss": val_loss,
+        "Val Precision": val_precision,
+        "Val Recall": val_recall,
+        "Val F1 Score": val_f1,
+        "Val Spider Plot": val_fig
+    })
+
 
     if (epoch % 5 == 0 and epoch != 0) or epoch == epochs:
         save_dir = "checkpoints"
@@ -221,7 +311,9 @@ for epoch in range(num_epochs):
         save = os.path.join(save_dir,f"asvspoof-ast-model{epoch}_{date}")
         model.save_pretrained(save)
 
-    print(f"Epoch {epoch+1}: Loss = {loss:.4f}, Accuracy = {acc:.2f}%, Precision = {precision:.4f}, Recall = {recall:.4f}, F1 = {f1:.4f}")
+    print(f"Epoch {epoch + 1}: Train Loss = {loss:.4f}, Train Acc = {acc:.2f}%, "
+          f"Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.2f}%, "
+          f"Val Precision = {val_precision:.4f}, Val Recall = {val_recall:.4f}, Val F1 = {val_f1:.4f}")
 
 #shit is so aids I cant take it anymore
 #if attention_maps:
