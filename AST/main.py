@@ -73,6 +73,7 @@ class ASVspoofDataset(Dataset):
 
             max_count = self.max_per_class.get(class_name) if self.max_per_class else None
             if max_count is not None:
+                random.shuffle(class_files)
                 class_files = class_files[:min(max_count, len(class_files))]
 
             self.files.extend([(file_path, label) for file_path in class_files])
