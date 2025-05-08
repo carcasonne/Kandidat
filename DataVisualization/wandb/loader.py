@@ -1,49 +1,55 @@
 import wandb
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-# Optional: import your metric constants if you're using them
+# Optional: import your metric constants
 try:
     import metric_names as mn
     METRICS = [mn.TRAIN_ACCURACY, mn.VAL_ACCURACY]
 except ImportError:
-    # fallback if not using metric_names.py
-    METRICS = ["Train Accuracy", "Val Accuracy", "Train Loss"]
+    METRICS = ["Train Accuracy", "Val Accuracy"]
 
-def get_visuals_from_run(entity: str, project: str, run_id: str):
+def get_visuals_from_run(entity: str, project: str, run_id: str, output_dir: Path = Path("plots")):
+    sns.set(style="darkgrid")
+    
     api = wandb.Api()
     run = api.run(f"{entity}/{project}/{run_id}")
 
-    # Fetch full unsampled history
+    # Retrieve full unsampled history
     history = run.scan_history()
-    history_list = list(history)
-    history_df = pd.DataFrame(history_list)
+    history_df = pd.DataFrame(list(history))
 
-    print("=== Available columns ===")
-    print(history_df.columns.tolist())
+    # Create output directory for this run
+    run_output_dir = output_dir / run_id
+    run_output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("\n=== First 10 rows of history ===")
-    print(history_df.head(10))
-
-    print("\n=== Selected metrics (first 10 rows) ===")
+    # Prepare DataFrame with only the metrics we care about
+    plot_data = {}
     for metric in METRICS:
         if metric in history_df.columns:
-            print(f"\n-- {metric} --")
-            print(history_df[[metric]].dropna().head(10))
-        else:
-            print(f"\n-- {metric} not found in columns --")
+            series = history_df[metric].dropna().reset_index(drop=True)
+            plot_data[metric] = series
 
-    # Plot available metrics
-    for metric in METRICS:
-        if metric in history_df.columns:
-            metric_data = history_df[[metric]].dropna()
-            if not metric_data.empty:
-                plt.plot(metric_data.index, metric_data[metric], label=metric)
+    if not plot_data:
+        print(f"No metrics found for run {run_id}")
+        return
 
-    plt.legend()
-    plt.title("Metrics Over Time")
-    plt.xlabel("Step Index")
+    # Plot with Seaborn
+    plt.figure(figsize=(10, 6))
+    for name, values in plot_data.items():
+        sns.lineplot(data=values, label=name)
+
+    plt.title(f"Metrics Over Time — {run_id}")
+    plt.xlabel("Step (logged index)")
     plt.ylabel("Metric Value")
-    plt.grid(True)
+    plt.legend()
     plt.tight_layout()
-    plt.show()
+
+    # Save to file
+    output_path = run_output_dir / "metrics.png"
+    plt.savefig(output_path)
+    plt.close()
+
+    print(f"Saved plot to: {output_path}")
