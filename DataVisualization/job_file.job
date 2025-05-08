@@ -17,8 +17,8 @@ echo "-------------------------------"
 # Load Conda and activate environment
 echo "Loading module anaconda3"
 module load Anaconda3
-echo "Running conda startup script"
-. "/home/vson/anaconda3/etc/profile.d/conda.sh"
+eval "$(conda shell.bash hook)"
+
 echo "Trying to activate Conda environment 'thesis_env'..."
 conda activate vson-env
 
