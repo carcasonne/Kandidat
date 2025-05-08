@@ -3,7 +3,7 @@ from Datasets import ASVspoofDataset
 from Visualizers import class_balance, avg_audio_length, hist_audio_length
 
 def main():
-    data_dir = "/home/alsk/Kandidat/AST/spectrograms/ASVSpoof"
+    data_dir = "/home/alsk/Kandidat/AST/spectrograms/"
     output_dir = "/home/vson/JobOutputs/ASVspoofAnalysis/Output/"
     dataset = ASVspoofDataset.ASVspoofDataset(data_dir)
 
