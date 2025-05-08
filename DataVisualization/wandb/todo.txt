@@ -1,0 +1,10 @@
+TODO
+
+- Better separation of runs and metrics
+    * DataClass seems like the way to go
+- Different kind of visualizations
+    * now only for graphs
+    * also need to fetch the confusion matrix and calculate precision/recall class-wise. Currently only calculated for the "true" class.
+    * make pretty confusion matrix for report
+- Get dataset property metrics fetched and stored to prevent multiple loads of dataset
+- Refine dataset propety metrics visualization, looks like shit rn

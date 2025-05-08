@@ -4,13 +4,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Optional: import your metric constants
-try:
-    import metric_names as mn
-    METRICS = [mn.TRAIN_ACCURACY, mn.VAL_ACCURACY]
-except ImportError:
-    METRICS = ["Train Accuracy", "Val Accuracy"]
 
+from typing import List
 
 def set_theme():
     sns.set_theme(style="white")
@@ -38,7 +33,7 @@ def set_theme():
         "figure.dpi": 100
     })
 
-def get_visuals_from_run(entity: str, project: str, run_id: str, output_dir: Path = Path("plots")):
+def generate_graphs_from_run(entity: str, project: str, run_id: str, metrics: List[str], displayname: str, output_dir: Path = Path("plots")):
     set_theme()
     
     api = wandb.Api()
@@ -49,12 +44,12 @@ def get_visuals_from_run(entity: str, project: str, run_id: str, output_dir: Pat
     history_df = pd.DataFrame(list(history))
 
     # Create output directory for this run
-    run_output_dir = output_dir / run_id
+    run_output_dir = output_dir / displayname
     run_output_dir.mkdir(parents=True, exist_ok=True)
 
     # Prepare DataFrame with only the metrics we care about
     plot_data = {}
-    for metric in METRICS:
+    for metric in metrics:
         if metric in history_df.columns:
             series = history_df[metric].dropna().reset_index(drop=True)
             plot_data[metric] = series
@@ -68,7 +63,7 @@ def get_visuals_from_run(entity: str, project: str, run_id: str, output_dir: Pat
     for name, values in plot_data.items():
         sns.lineplot(data=values, label=name)
 
-    plt.title(f"Metrics Over Time — {run_id}")
+    plt.title(f"Metrics Over Time — {displayname}")
     plt.xlabel("Step (logged index)")
     plt.ylabel("Metric Value")
     plt.legend()
