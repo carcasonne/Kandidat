@@ -1,3 +1,6 @@
 venv/*
 venv2/*
 ASVSpoof/*
+
+# DONT PUSH THE SECRET
+wandb_login.py
