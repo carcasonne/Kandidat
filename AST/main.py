@@ -304,7 +304,7 @@ for epoch in range(num_epochs):
     })
 
 
-    if (epoch % 5 == 0 and epoch != 0) or epoch == epochs:
+    if (epoch % 5 == 0 and epoch != 0) or epoch == epochs - 1:
         save_dir = "checkpoints"
         os.makedirs(save_dir, exist_ok=True)
 

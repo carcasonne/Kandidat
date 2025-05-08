@@ -285,7 +285,7 @@ for epoch in range(num_epochs):
         "Val F1 Score": val_f1,
         "Val Spider Plot": val_fig
     })
-    if (epoch % 5 == 0 and epoch != 0) or epoch == num_epochs:
+    if (epoch % 5 == 0 and epoch != 0) or epoch == num_epochs - 1:
         save_dir = "checkpoints"
         os.makedirs(save_dir, exist_ok=True)
 
