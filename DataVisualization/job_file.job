@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name=analyze-asv21    # Job name
-#SBATCH --output=analyze-ast21_v2.out      # Name of output file (%j expands to jobId)
+#SBATCH --output=analyze-ast21_v3.out      # Name of output file (%j expands to jobId)
 #SBATCH --cpus-per-task=4       # Schedule four cores
 #SBATCH --gres=gpu               # Schedule a GPU
 #SBATCH --time=04:00:00          # Run time (hh:mm:ss) - run for one hour max
@@ -17,7 +17,6 @@ echo "-------------------------------"
 # Load Conda and activate environment
 echo "Trying to activate Conda environment 'thesis_env'..."
 conda activate vson-env
-
 
 # Run the actual Python script
 echo "Running the Python script..."
