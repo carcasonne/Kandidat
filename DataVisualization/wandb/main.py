@@ -12,7 +12,10 @@ login()
 entity = "Holdet_thesis"
 project = "Kandidat-AST"
 
-images_AST2K = loader.get_visuals_from_run(entity, project, wandb_runs.AST_2K, Path("wandb_metric_plots"))
+runs = []
+
+for run in runs:
+    images_AST2K = loader.get_visuals_from_run(entity, project, wandb_runs.AST_2K, Path("wandb_metric_plots"))
 
 
 

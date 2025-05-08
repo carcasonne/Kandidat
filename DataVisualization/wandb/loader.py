@@ -11,8 +11,35 @@ try:
 except ImportError:
     METRICS = ["Train Accuracy", "Val Accuracy"]
 
+
+def set_theme():
+    sns.set_theme(style="white")
+    plt.rcParams.update({
+        "axes.facecolor": "white",      
+        "figure.facecolor": "white",
+        "axes.edgecolor": "black",
+        "axes.linewidth": 1.0,
+        "grid.color": "lightgray",
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.5,
+        "axes.grid": True,
+        "xtick.bottom": True,
+        "ytick.left": True,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+        "font.family": "serif",         
+        "font.size": 12,
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "legend.fontsize": 11,
+        "legend.frameon": False,
+        "savefig.dpi": 300,             
+        "savefig.transparent": False,
+        "figure.dpi": 100
+    })
+
 def get_visuals_from_run(entity: str, project: str, run_id: str, output_dir: Path = Path("plots")):
-    sns.set(style="darkgrid")
+    set_theme()
     
     api = wandb.Api()
     run = api.run(f"{entity}/{project}/{run_id}")
