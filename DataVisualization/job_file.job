@@ -17,6 +17,8 @@ echo "-------------------------------"
 # Load Conda and activate environment
 echo "Loading module anaconda3"
 module load Anaconda3
+echo "Running conda startup script"
+. "/opt/itu/easybuild/software/Anaconda3/2024.06-1/etc/profile.d/conda.sh"
 echo "Trying to activate Conda environment 'thesis_env'..."
 conda activate vson-env
 
