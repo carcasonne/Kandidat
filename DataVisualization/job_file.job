@@ -15,10 +15,8 @@ echo "-------------------------------"
 
 
 # Load Conda and activate environment
-echo "Trying to load Conda..."
-source /home/alsk/anaconda3/etc/profile.d/conda.sh
 echo "Trying to activate Conda environment 'thesis_env'..."
-conda activate thesis_env
+conda activate vson-env
 
 
 # Run the actual Python script
