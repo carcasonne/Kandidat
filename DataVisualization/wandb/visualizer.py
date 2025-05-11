@@ -409,6 +409,105 @@ class Visualizer:
 
         return fig
 
+
+    def compare_metrics_across_runs(self,
+                            runs: List[ModelRun],
+                            metrics: List[str],
+                            title: Optional[str] = None,
+                            figsize: Tuple[int, int] = (12, 8),
+                            smoothing: int = 1,
+                            colormap: Optional[str] = 'tab10',
+                            line_styles: Optional[Dict[str, str]] = None,
+                            run_colors: Optional[Dict[str, str]] = None,
+                            include_legend: bool = True) -> plt.Figure:
+        """
+        Compare multiple metrics across multiple runs in a single plot.
+
+        Args:
+            runs: List of ModelRun objects to include
+            metrics: List of metric names to compare
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            smoothing: Window size for moving average smoothing (1 = no smoothing)
+            colormap: Matplotlib colormap name to use if run_colors not provided
+            line_styles: Optional dictionary mapping metrics to specific line styles
+            run_colors: Optional dictionary mapping run IDs to specific colors
+            include_legend: Whether to include the legend (default: True)
+
+        Returns:
+            Matplotlib figure object
+        """
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Generate color map for runs if not provided
+        if run_colors is None:
+            n_runs = len(runs)
+            cmap = cm.get_cmap(colormap)
+            norm = Normalize(vmin=0, vmax=max(n_runs-1, 1))
+            run_colors = {run.id: cmap(norm(i)) for i, run in enumerate(runs)}
+
+        # Default line styles for metrics if not provided
+        if line_styles is None:
+            line_styles = {}
+            for i, metric_name in enumerate(metrics):
+                try:
+                    metric_info = get_metric(metric_name)
+                    if metric_info.preferred_style:
+                        line_styles[metric_name] = metric_info.preferred_style
+                    # If no preferred style, alternate between solid and dashed
+                    else:
+                        line_styles[metric_name] = '-' if 'train' in metric_name.lower() else '--'
+                except KeyError:
+                    # Default to solid if metric not found
+                    line_styles[metric_name] = '-'
+
+        # Plot each run and metric combination
+        for run in runs:
+            run_data = self.get_run_data(run)
+            run_color = run_colors.get(run.id)
+
+            for metric_name in metrics:
+                try:
+                    metric_info = get_metric(metric_name)
+                    metric_series = get_run_metric_data(run_data, metric_name)
+
+                    if len(metric_series) == 0:
+                        print(f"Warning: No data found for metric '{metric_name}' in run '{run.display_name}'")
+                        continue
+
+                    # Apply smoothing if requested
+                    if smoothing > 1:
+                        metric_series = metric_series.rolling(window=smoothing, min_periods=1).mean()
+
+                    # Get line style from provided dictionary or default
+                    line_style = line_styles.get(metric_name, '-.')
+
+                    # Generate label combining run name and metric name
+                    label = f"{run.display_name} - {metric_info.display_name}"
+
+                    # Plot the line
+                    ax.plot(metric_series, label=label, color=run_color, linestyle=line_style)
+
+                except KeyError as e:
+                    print(f"Error plotting {metric_name} for {run.display_name}: {e}")
+
+        # Set plot properties
+        if title:
+            ax.set_title(title)
+        else:
+            metric_names = [get_metric(m).display_name for m in metrics if m in get_metric(m).name]
+            ax.set_title(f"Comparison of {', '.join(metric_names)} Across Runs")
+
+        ax.set_xlabel("Step")
+        ax.set_ylabel("Value")
+
+        if include_legend:
+            ax.legend()
+
+        fig.tight_layout()
+
+        return fig
+
     def save_figure(self, fig: plt.Figure, filename: str) -> Path:
         """Save a figure to a file in the output directory"""
         # Clean up filename to be filesystem-friendly

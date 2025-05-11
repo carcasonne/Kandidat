@@ -3,8 +3,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
-
-
 from typing import List
 
 def set_theme():
@@ -43,9 +41,8 @@ def generate_graphs_from_run(entity: str, project: str, run_id: str, metrics: Li
     history = run.scan_history()
     history_df = pd.DataFrame(list(history))
 
-    # Create output directory for this run
-    run_output_dir = output_dir / displayname
-    run_output_dir.mkdir(parents=True, exist_ok=True)
+    # Create output directory (just the main output directory)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Prepare DataFrame with only the metrics we care about
     plot_data = {}
@@ -69,8 +66,14 @@ def generate_graphs_from_run(entity: str, project: str, run_id: str, metrics: Li
     plt.legend()
     plt.tight_layout()
 
-    # Save to file
-    output_path = run_output_dir / "metrics.png"
+    # Generate a meaningful filename using displayname and metrics
+    metrics_str = "_".join([m.replace("/", "-") for m in metrics])
+    filename = f"{displayname}_{metrics_str}.png"
+    # Clean up filename to be filesystem-friendly
+    filename = filename.replace(" ", "_").replace(":", "").replace("?", "").replace("*", "").replace("|", "")
+    
+    # Save to file in the main output directory
+    output_path = output_dir / filename
     plt.savefig(output_path)
     plt.close()
 

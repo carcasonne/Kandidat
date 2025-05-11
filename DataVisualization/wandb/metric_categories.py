@@ -64,6 +64,15 @@ metrics.register(MetricInfo(
     description="Accuracy on training data"
 ))
 
+# stupid xD
+metrics.register(MetricInfo(
+    name="Accuracy",
+    display_name="Training Accuracy",
+    category=MetricCategory.SCALAR,
+    preferred_color="blue",
+    description="Accuracy on training data"
+))
+
 metrics.register(MetricInfo(
     name="Train Loss", 
     display_name="Training Loss",
@@ -89,11 +98,31 @@ metrics.register(MetricInfo(
     description="Precision on training data"
 ))
 
+# stupid xD
+metrics.register(MetricInfo(
+    name="Precision",
+    display_name="Training Precision",
+    category=MetricCategory.SCALAR,
+    preferred_color="green",
+    description="Precision on training data"
+))
+
 metrics.register(MetricInfo(
     name="Train Recall", 
     display_name="Training Recall",
     category=MetricCategory.SCALAR,
     preferred_color="purple",
+    preferred_style="solid",
+    description="Recall on training data"
+))
+
+# stupid xD
+metrics.register(MetricInfo(
+    name="Recall",
+    display_name="Training Recall",
+    category=MetricCategory.SCALAR,
+    preferred_color="purple",
+    preferred_style="solid",
     description="Recall on training data"
 ))
 
@@ -105,8 +134,25 @@ metrics.register(MetricInfo(
     description="F1 Score on training data"
 ))
 
+# stupid xD
+metrics.register(MetricInfo(
+    name="F1 Score",
+    display_name="Training F1 Score",
+    category=MetricCategory.SCALAR,
+    preferred_color="orange",
+    description="F1 Score on training data"
+))
+
 metrics.register(MetricInfo(
     name="train_conf_mat", 
+    display_name="Training Confusion Matrix",
+    category=MetricCategory.MATRIX,
+    description="Confusion matrix on training data"
+))
+
+# stupid xD
+metrics.register(MetricInfo(
+    name="conf_mat",
     display_name="Training Confusion Matrix",
     category=MetricCategory.MATRIX,
     description="Confusion matrix on training data"
