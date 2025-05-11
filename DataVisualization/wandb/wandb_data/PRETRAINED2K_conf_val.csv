@@ -1,0 +1,5 @@
+"Actual","Predicted","nPredictions"
+"Real","Real","303"
+"Real","Fake","89"
+"Fake","Real","79"
+"Fake","Fake","329"

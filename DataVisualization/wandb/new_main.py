@@ -27,14 +27,128 @@ login()
 
 visualizer = Visualizer(output_dir=Path("custom_plots"))
 
-individualFigures = True
-comparisonFigures = True
+individualFigures = False
+comparisonFigures = False
+confusionComparison = False
+finalComparisons = False
+sizeVsPerf = True
+
+run_colors = {
+    AST_2K.id: "#CC2222",           # Dark Red
+    AST_20K.id: "#0099AA",          # Dark Blue
+    AST_100K.id: "#CC9900",         # Dark Yellow
+    PRETRAINED_2K.id: "#008F4F",    # Dark Green
+    PRETRAINED_20K.id: "#CC0088",   # Dark Pink
+    PRETRAINED_100K.id: "#f26849"   # Dark Orange
+}
+
+# so I got this idea a bit too late, and doesnt make sense to go back and implement it for the older methods
+# we're never gonna use this project again so whatever x)
+metric_mapping = {
+    "AST": {
+        "Accuracy": "Train Accuracy",
+        "Precision": "Train Precision",
+        "Recall": "Train Recall",
+        "F1 Score": "Train F1 Score",
+        "Loss": "Train Loss",
+        "Val Accuracy": "Val Accuracy",
+        "Val Precision": "Val Precision",
+        "Val Recall": "Val Recall",
+        "Val F1 Score": "Val F1 Score",
+        "Val Loss": "Val Loss"
+    },
+    "Pretrained": {
+        "Accuracy": "Accuracy",
+        "Precision": "Precision",
+        "Recall": "Recall",
+        "F1 Score": "F1 Score",
+        "Loss": "Loss",
+        "Train Accuracy": "Accuracy",
+        "Train Precision": "Precision",
+        "Train Recall": "Recall",
+        "Train F1 Score": "F1 Score",
+        "Loss": "Loss",
+        "Val Accuracy": "Val Accuracy",
+        "Val Precision": "Val Precision",
+        "Val Recall": "Val Recall",
+        "Val F1 Score": "Val F1 Score",
+        "Val Loss": "Val Loss"
+    }
+}
+
+
+if finalComparisons:
+    print("Creating final metrics bar plots...")
+
+    run_groups = [
+        (ALL_RUNS, "Train Accuracy", "All Models"),
+        (ALL_RUNS, "Val Accuracy", "All Models"),
+        (AST_RUNS, "Train Accuracy", "AST Models"),
+        (AST_RUNS, "Val Accuracy", "AST Models"),
+        (PRETRAINED_RUNS, "Train Accuracy", "Pretrained Models"),
+        (PRETRAINED_RUNS, "Val Accuracy", "Pretrained Models"),
+        (ALL_RUNS, "Train Precision", "All Models"),
+        (ALL_RUNS, "Val Precision", "All Models"),
+        (AST_RUNS, "Train Precision", "AST Models"),
+        (AST_RUNS, "Val Precision", "AST Models"),
+        (PRETRAINED_RUNS, "Train Precision", "Pretrained Models"),
+        (PRETRAINED_RUNS, "Val Precision", "Pretrained Models"),
+        (ALL_RUNS, "Train Recall", "All Models"),
+        (ALL_RUNS, "Val Recall", "All Models"),
+        (AST_RUNS, "Train Recall", "AST Models"),
+        (AST_RUNS, "Val Recall", "AST Models"),
+        (PRETRAINED_RUNS, "Train Recall", "Pretrained Models"),
+        (PRETRAINED_RUNS, "Val Recall", "Pretrained Models"),
+        (ALL_RUNS, "Train F1 Score", "All Models"),
+        (ALL_RUNS, "Val F1 Score", "All Models"),
+        (AST_RUNS, "Train F1 Score", "AST Models"),
+        (AST_RUNS, "Val F1 Score", "AST Models"),
+        (PRETRAINED_RUNS, "Train F1 Score", "Pretrained Models"),
+        (PRETRAINED_RUNS, "Val F1 Score", "Pretrained Models")
+    ]
+
+
+    for run_group, metric_name, display_name in run_groups:
+        final_acc_comparison = visualizer.plot_final_metrics(
+            runs=run_group,
+            metrics=[metric_name],
+            title=f"Final {metric_name} Across {display_name}",
+            figsize=(12, 8),
+            run_colors=run_colors,
+            metric_mapping=metric_mapping
+        )
+        visualizer.save_figure(final_acc_comparison, f"FINAL_{display_name}_{metric_name}.png")
+
+
+
+
+if confusionComparison:
+    comparisons = [
+        (AST_2K, PRETRAINED_2K, "train", "2K"),
+        (AST_2K, PRETRAINED_2K, "val", "2K"),
+        (AST_20K, PRETRAINED_20K, "train", "20K"),
+        (AST_20K, PRETRAINED_20K, "val", "20K"),
+        (AST_100K, PRETRAINED_100K, "train", "100K"),
+        (AST_100K, PRETRAINED_100K, "val", "100K"),
+    ]
+
+    for run1, run2, metric_type, size in comparisons:
+        pretty_title = f"{metric_type.capitalize()} Confusion Matrix - {size} (AST vs Pretrained) "
+        fig_conf_train = visualizer.plot_confusion_matrix_between_runs(
+                    run1=run1,
+                    run2=run2,
+                    metric_type=metric_type,
+                    title=pretty_title,
+                    figsize=(8, 6)
+                )
+        visualizer.save_figure(fig_conf_train, f"COMPARISON_{size}_{metric_type}_confusion_matrixes.png")
+
 
 if individualFigures:
     print("#########################")
     print("Creating figures PER RUN")
     print("#########################")
-    for run in [AST_100K]:
+    for run in [AST_2K, AST_20K, AST_100K, PRETRAINED_2K, PRETRAINED_20K, PRETRAINED_100K]:
         print(f"Creating figures for {run.display_name}...")
 
         print("Making confusion matrices")
@@ -98,15 +212,6 @@ if comparisonFigures:
     print("############################")
     print("Creating figures ACROSS RUNS")
     print("############################")
-
-    run_colors = {
-        AST_2K.id: "#CC2222",           # Dark Red
-        AST_20K.id: "#0099AA",          # Dark Blue
-        AST_100K.id: "#CC9900",         # Dark Yellow
-        PRETRAINED_2K.id: "#008F4F",    # Dark Green
-        PRETRAINED_20K.id: "#CC0088",   # Dark Pink
-        PRETRAINED_100K.id: "#f26849"   # Dark Orange
-    }
 
     AST_RUNS = [AST_2K, AST_20K, AST_100K]
     PRETRAINED_RUNS = [PRETRAINED_2K, PRETRAINED_20K, PRETRAINED_100K]
@@ -187,7 +292,7 @@ if comparisonFigures:
     # For each pair, create loss and accuracy comparisons
     for ast_model, pretrained_model, size_label in size_pairs:
         for train, val, name in metric_groups:
-            precision_comparison = visualizer.compare_metrics_across_runs(
+            comparison_figure = visualizer.compare_metrics_across_runs(
                 runs=[ast_model, pretrained_model],
                 metrics=[train, val, name],
                 title=f"{name} Comparison - {size_label} Models (AST vs Pretrained)",
@@ -200,7 +305,7 @@ if comparisonFigures:
                     val: "dashed"
                 }
             )
-            visualizer.save_figure(precision_comparison, f"COMPARISON_{size_label}_{name}_precision.png")
+            visualizer.save_figure(comparison_figure, f"COMPARISON_{size_label}_{name}.png")
 
 
     # Add direct AST vs Pretrained comparison across all sizes
@@ -223,15 +328,15 @@ if comparisonFigures:
     # Similarly for F1 Score if you have it
     f1_comparison = visualizer.compare_metrics_across_runs(
         runs=[AST_2K, AST_20K, AST_100K, PRETRAINED_2K, PRETRAINED_20K, PRETRAINED_100K],
-        metrics=["Train F1", "Val F1", "Val F1"],
+        metrics=["Train F1 Score", "Val F1 Score", "Val F1 Score"],
         title="Validation F1 Score Comparison - All Models",
         figsize=(14, 8),
         smoothing=5,
         run_colors=run_colors,
         line_styles = {
-            "F1": "solid",
-            "Train F1": "solid",
-            "Val F1": "dashed"
+            "F1 Score": "solid",
+            "Train F1 Score": "solid",
+            "Val F1 Score": "dashed"
         }
     )
     visualizer.save_figure(f1_comparison, "ALL_MODELS_f1_comparison.png")

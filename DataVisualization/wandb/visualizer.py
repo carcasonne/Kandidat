@@ -152,6 +152,41 @@ class Visualizer:
         
         return fig
     
+
+    def plot_confusion_matrix_between_runs(self,
+                          run1: ModelRun,
+                          run2: ModelRun,
+                          metric_type: str,
+                          title: Optional[str] = None,
+                          figsize: Tuple[int, int] = (8, 6),
+                          step: int = -1) -> plt.Figure:
+
+        def load_and_plot(ax, run: ModelRun, conf_type: str):
+            file_path = Path(f"wandb_data/{run.shortname}_conf_{conf_type}.csv")
+            if not file_path.exists():
+                raise FileNotFoundError(f"Confusion matrix file not found: {file_path}")
+
+            df = pd.read_csv(file_path)
+            conf_mat = df.pivot(index="Actual", columns="Predicted", values="nPredictions").fillna(0).astype(int)
+
+            annotations = conf_mat.astype(str) + "\n" + (
+                conf_mat.div(conf_mat.sum(axis=1), axis=0) * 100
+            ).round(1).astype(str) + "%"
+            sns.heatmap(conf_mat, annot=annotations, fmt='', cmap='Blues', ax=ax, cbar=False)
+
+            ax.set_xlabel("Predicted")
+            ax.set_ylabel("Actual")
+            ax.set_title(f"{run.display_name}")
+
+        fig, axes = plt.subplots(1, 2, figsize=figsize)
+        load_and_plot(axes[0], run1, metric_type)
+        load_and_plot(axes[1], run2, metric_type)
+        if title:
+            fig.suptitle(title)
+        fig.tight_layout(rect=[0, 0, 1, 0.95])
+
+        return fig
+
     def plot_confusion_matrix(self, 
                           run: ModelRun, 
                           metric_name: str = None,
@@ -188,7 +223,7 @@ class Visualizer:
 
             ax.set_xlabel("Predicted")
             ax.set_ylabel("Actual")
-            ax.set_title(f"{conf_type.capitalize()} Confusion Matrix")
+            ax.set_title(f"{conf_type.capitalize()}")
 
         if both:
             fig, axes = plt.subplots(1, 2, figsize=figsize)
@@ -507,6 +542,293 @@ class Visualizer:
         fig.tight_layout()
 
         return fig
+
+
+
+    def plot_final_metrics(self,
+                        runs: List[ModelRun],
+                        metrics: List[str],
+                        title: Optional[str] = None,
+                        figsize: Tuple[int, int] = (12, 8),
+                        run_colors: Optional[Dict[str, str]] = None,
+                        metric_mapping: Optional[Dict[str, Dict[str, str]]] = None) -> plt.Figure:
+        """
+        Create a bar plot comparing final metric values across runs.
+
+        Args:
+            runs: List of ModelRun objects to include
+            metrics: List of base metric names to compare (e.g., "Accuracy", "Precision")
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            run_colors: Optional dictionary mapping run IDs to specific colors
+            metric_mapping: Optional dictionary mapping run type to metric name patterns
+                            e.g., {"AST": {"Accuracy": "Train Accuracy", "Val Accuracy": "Val Accuracy"},
+                                "Pretrained": {"Accuracy": "Accuracy", "Val Accuracy": "Val Accuracy"}}
+
+        Returns:
+            Matplotlib figure object
+        """
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Number of runs and metrics
+        n_runs = len(runs)
+        n_metrics = len(metrics)
+
+        # Generate colors for runs if not provided
+        if run_colors is None:
+            cmap = cm.get_cmap('tab10')
+            norm = Normalize(vmin=0, vmax=max(n_runs-1, 1))
+            run_colors = {run.id: cmap(norm(i)) for i, run in enumerate(runs)}
+
+        # Width of bars and positions
+        bar_width = 0.8 / n_metrics
+        index = np.arange(n_runs)
+
+        # For storing metric values to set y-axis limits
+        all_values = []
+
+        # Plot each metric as a group of bars
+        for i, metric_name in enumerate(metrics):
+            values = []
+
+            for j, run in enumerate(runs):
+                run_data = self.get_run_data(run)
+
+                # Determine run type for metric mapping
+                run_type = "AST" if "AST" in run.shortname else "Pretrained"
+
+
+                if metric_mapping is None:
+                    print("oh shit!")
+
+                # Get the appropriate metric name for this run type
+                if run_type in metric_mapping and metric_name in metric_mapping[run_type]:
+                    actual_metric_name = metric_mapping[run_type][metric_name]
+                else:
+                    actual_metric_name = metric_name
+
+                try:
+                    # Try to get metric info - if it fails, we'll just use the raw name
+                    try:
+                        metric_info = get_metric(actual_metric_name)
+                        display_name = metric_info.display_name
+                    except:
+                        display_name = actual_metric_name
+
+                    metric_series = get_run_metric_data(run_data, actual_metric_name)
+
+                    if len(metric_series) == 0:
+                        print(f"Warning: No data found for metric '{actual_metric_name}' in run '{run.display_name}'")
+                        values.append(0)
+                        continue
+
+                    # Get the final value
+                    final_value = float(metric_series.iloc[-1])
+                    values.append(final_value)
+                    all_values.append(final_value)
+
+                except KeyError as e:
+                    print(f"Error getting {actual_metric_name} for {run.display_name}: {e}")
+                    values.append(0)
+
+            # Position for this metric's bars
+            pos = index + i * bar_width - (n_metrics - 1) * bar_width / 2
+
+            # Create a list to store the bars for this metric
+            bars = []
+
+            # Plot the bars for this metric with different colors by run
+            for j, (pos_val, value, run) in enumerate(zip(pos, values, runs)):
+                # Get color for this run
+                color = run_colors.get(run.id)
+
+                # Plot the bar with the run's color
+                bar = ax.bar(pos_val, value, bar_width * 0.9,
+                            color=color,
+                            alpha=0.8)
+                bars.append(bar[0])
+
+                # Add value label on top of bar
+                if value > 0:  # Only add label if value is positive
+                    ax.text(pos_val, value + 0.01,
+                        f'{value:.3f}', ha='center', va='bottom', fontsize=9)
+
+            # For legend - only add once per metric
+            if i == 0:
+                # Create custom legend for runs
+                from matplotlib.lines import Line2D
+                legend_elements = [Line2D([0], [0], color=run_colors[run.id], lw=0,
+                                        marker='s', markersize=10, label=run.display_name)
+                                for run in runs]
+                ax.legend(handles=legend_elements, loc='best')
+
+        # Set plot properties
+        if title:
+            ax.set_title(title)
+        else:
+            metric_labels = []
+            for m in metrics:
+                try:
+                    metric_labels.append(get_metric(m).display_name)
+                except:
+                    metric_labels.append(m)
+            ax.set_title(f"Final Metrics Comparison")
+
+        # Set x-axis ticks and labels
+        ax.set_xticks(np.arange(len(metrics)))
+
+        # Try to get display names for x-tick labels
+        x_labels = []
+        for m in metrics:
+            try:
+                x_labels.append(get_metric(m).display_name)
+            except:
+                x_labels.append(m)
+        ax.set_xticklabels(x_labels)
+
+        # Set y-axis limits with some headroom for labels
+        if all_values:
+            ax.set_ylim(0, max(all_values) * 1.15)
+
+        # Add grid lines for better readability
+        ax.yaxis.grid(True, linestyle='--', alpha=0.7)
+
+        fig.tight_layout()
+
+        return fig
+
+
+    def plot_final_metric_by_category(self,
+                                runs: List[ModelRun],
+                                metric: str,
+                                group_by: Callable[[ModelRun], str],
+                                title: Optional[str] = None,
+                                figsize: Tuple[int, int] = (12, 8),
+                                color_by_group: bool = True) -> plt.Figure:
+        """
+        Create a grouped bar plot comparing a final metric value across runs,
+        grouped by a category (e.g., data size, model type).
+
+        Args:
+            runs: List of ModelRun objects to include
+            metric: Metric name to compare
+            group_by: Function that takes a ModelRun and returns a group name
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            color_by_group: Whether to color bars by group (True) or by run (False)
+
+        Returns:
+            Matplotlib figure object
+        """
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Group runs
+        grouped_runs = {}
+        for run in runs:
+            group = group_by(run)
+            if group not in grouped_runs:
+                grouped_runs[group] = []
+            grouped_runs[group].append(run)
+
+        # Number of groups and max runs per group
+        n_groups = len(grouped_runs)
+        max_runs_per_group = max(len(runs) for runs in grouped_runs.values())
+
+        # Generate colors
+        if color_by_group:
+            # Color by group
+            cmap = cm.get_cmap('tab10')
+            norm = Normalize(vmin=0, vmax=max(n_groups-1, 1))
+            group_colors = {group: cmap(norm(i)) for i, group in enumerate(grouped_runs.keys())}
+        else:
+            # Color by run
+            all_runs = []
+            for runs in grouped_runs.values():
+                all_runs.extend(runs)
+            cmap = cm.get_cmap('tab10')
+            norm = Normalize(vmin=0, vmax=max(len(all_runs)-1, 1))
+            run_colors = {run.id: cmap(norm(i)) for i, run in enumerate(all_runs)}
+
+        # Width of bars and positions
+        group_width = 0.8
+        bar_width = group_width / max_runs_per_group
+        index = np.arange(n_groups)
+
+        # For storing metric values to set y-axis limits
+        all_values = []
+
+        # Plot each group
+        for i, (group, group_runs) in enumerate(grouped_runs.items()):
+            for j, run in enumerate(group_runs):
+                run_data = self.get_run_data(run)
+
+                try:
+                    metric_info = get_metric(metric)
+                    metric_series = get_run_metric_data(run_data, metric)
+
+                    if len(metric_series) == 0:
+                        print(f"Warning: No data found for metric '{metric}' in run '{run.display_name}'")
+                        continue
+
+                    # Get the final value
+                    final_value = float(metric_series.iloc[-1])
+                    all_values.append(final_value)
+
+                    # Position for this bar
+                    pos = i + (j - len(group_runs)/2 + 0.5) * bar_width
+
+                    # Plot the bar
+                    if color_by_group:
+                        color = group_colors[group]
+                    else:
+                        color = run_colors[run.id]
+
+                    bar = ax.bar(pos, final_value, bar_width * 0.9,
+                            color=color, alpha=0.8)
+
+                    # Add value label on top of bar
+                    height = bar[0].get_height()
+                    ax.text(pos, height + 0.01,
+                        f'{final_value:.3f}', ha='center', va='bottom', fontsize=9)
+
+                    # Add run name below the bar for identification
+                    ax.text(pos, -0.05, run.shortname, ha='center', va='top',
+                            fontsize=8, rotation=45)
+
+                except KeyError as e:
+                    print(f"Error getting {metric} for {run.display_name}: {e}")
+
+        # Set plot properties
+        if title:
+            ax.set_title(title)
+        else:
+            metric_display = get_metric(metric).display_name
+            ax.set_title(f"Final {metric_display} Comparison by Group")
+
+        # Set x-axis ticks and labels
+        ax.set_xticks(index)
+        ax.set_xticklabels(grouped_runs.keys())
+
+        # Set y-axis limits with some headroom for labels
+        if all_values:
+            ax.set_ylim(0, max(all_values) * 1.15)
+
+        # Add grid lines for better readability
+        ax.yaxis.grid(True, linestyle='--', alpha=0.7)
+
+        # Add legend if coloring by run
+        if not color_by_group:
+            # Create custom legend handles
+            from matplotlib.lines import Line2D
+            legend_elements = [Line2D([0], [0], color=run_colors[run.id], lw=0,
+                                    marker='s', markersize=10, label=run.display_name)
+                            for run in all_runs]
+            ax.legend(handles=legend_elements, loc='best')
+
+        fig.tight_layout()
+
+        return fig
+
 
     def save_figure(self, fig: plt.Figure, filename: str) -> Path:
         """Save a figure to a file in the output directory"""
