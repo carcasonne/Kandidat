@@ -27,10 +27,10 @@ login()
 
 visualizer = Visualizer(output_dir=Path("custom_plots"))
 
-individualFigures = False
-comparisonFigures = False
-confusionComparison = False
-finalComparisons = False
+individualFigures = True
+comparisonFigures = True
+confusionComparison = True
+finalComparisons = True
 sizeVsPerf = True
 
 run_colors = {
@@ -42,6 +42,11 @@ run_colors = {
     PRETRAINED_100K.id: "#f26849"   # Dark Orange
 }
 
+run_type_colors = {
+    "AST": "#CC2222",               # Dark Red
+    "Pretrained": "#008F4F"         # Dark Green
+}
+
 # so I got this idea a bit too late, and doesnt make sense to go back and implement it for the older methods
 # we're never gonna use this project again so whatever x)
 metric_mapping = {
@@ -51,6 +56,11 @@ metric_mapping = {
         "Recall": "Train Recall",
         "F1 Score": "Train F1 Score",
         "Loss": "Train Loss",
+        "Train Accuracy": "Train Accuracy",
+        "Train Precision": "Train Precision",
+        "Train Recall": "Train Recall",
+        "Train F1 Score": "Train F1 Score",
+        "Train Loss": "Train Loss",
         "Val Accuracy": "Val Accuracy",
         "Val Precision": "Val Precision",
         "Val Recall": "Val Recall",
@@ -67,7 +77,7 @@ metric_mapping = {
         "Train Precision": "Precision",
         "Train Recall": "Recall",
         "Train F1 Score": "F1 Score",
-        "Loss": "Loss",
+        "Train Loss": "Loss",
         "Val Accuracy": "Val Accuracy",
         "Val Precision": "Val Precision",
         "Val Recall": "Val Recall",
@@ -75,6 +85,51 @@ metric_mapping = {
         "Val Loss": "Val Loss"
     }
 }
+
+runs_by_size = {
+    "2K": [AST_2K, PRETRAINED_2K],
+    "20K": [AST_20K, PRETRAINED_20K],
+    "100K": [AST_100K, PRETRAINED_100K]
+}
+
+
+if sizeVsPerf:
+
+    metrics = [
+        "Train Accuracy",
+        "Train Precision",
+        "Train Recall",
+        "Train F1 Score",
+        "Train Loss",
+        "Val Accuracy",
+        "Val Precision",
+        "Val Recall",
+        "Val F1 Score",
+        "Val Loss"
+    ]
+
+    for metric in metrics:
+        try:
+            metric_info = get_metric(metric)
+            metric_display = metric_info.display_name
+        except:
+            metric_display = metric
+
+        size_performance_plot = visualizer.plot_metrics_vs_dataset_size(
+            runs_by_size=runs_by_size,
+            metric=metric,
+            title=f"{metric_display} vs Dataset Size",
+            figsize=(10, 6),
+            run_type_colors=run_type_colors,
+            metric_mapping=metric_mapping,
+            size_order=["2K", "20K", "100K"],
+            include_markers=True
+        )
+
+        # Save the figure
+        metric_filename = metric.lower().replace(" ", "_").replace("/", "_")
+        visualizer.save_figure(size_performance_plot, f"SIZE_VS_{metric_filename}.png")
+
 
 
 if finalComparisons:
@@ -148,7 +203,17 @@ if individualFigures:
     print("#########################")
     print("Creating figures PER RUN")
     print("#########################")
-    for run in [AST_2K, AST_20K, AST_100K, PRETRAINED_2K, PRETRAINED_20K, PRETRAINED_100K]:
+
+    run_data = [
+        (AST_2K, "AST"),
+        (AST_20K, "AST"),
+        (AST_100K, "AST"),
+        (PRETRAINED_2K, "pretrained"),
+        (PRETRAINED_20K, "pretrained"),
+        (PRETRAINED_100K, "pretrained"),
+    ]
+
+    for run, run_type in run_data:
         print(f"Creating figures for {run.display_name}...")
 
         print("Making confusion matrices")
@@ -182,7 +247,7 @@ if individualFigures:
         print("Making train/val loss graphs")
         fig_loss = visualizer.compare_metrics(
             run=run,
-            metrics=["Train Loss", "Val Loss"],
+            metrics=["Train Loss", "Val Loss", "Loss"],
             title=f"Training vs Validation Loss - {run.display_name}",
             figsize=(10, 6),
             smoothing=5
@@ -192,19 +257,21 @@ if individualFigures:
         print("Making classification metrics graphs")
 
         for metric in [
-            ("Train Accuracy","Val Accuracy"),
-            ("Train Precision", "Val Precision"),
-            ("Train Recall", "Val Recall"),
-            ("Train F1 Score", "Val F1 Score")
+            ("Train Accuracy", "Val Accuracy", "Accuracy"),
+            ("Train Precision", "Val Precision", "Precision"),
+            ("Train Recall", "Val Recall", "Recall"),
+            ("Train F1 Score", "Val F1 Score", "F1 Score")
         ]:
+            # no I dont think this is good code, but I am too lazy to fix it
+            train_metric = metric[2] if run_type.lower() == "pretrained" else metric[0]
             fig_class_metrics = visualizer.compare_metrics(
                 run=run,
-                metrics=[metric[0], metric[1]],
-                title=f"{metric[0]} vs {metric[1]} - {run.display_name}",
+                metrics=[train_metric, metric[1]],
+                title=f"{train_metric} vs {metric[1]} - {run.display_name}",
                 figsize=(10, 6),
                 smoothing=5
             )
-            pretty_name = f"{metric[0].lower().replace(' ','_')}"
+            pretty_name = f"{metric[2].lower().replace(' ','_')}_val_vs_train"
             visualizer.save_figure(fig_class_metrics, f"{run.shortname}_{pretty_name}.png")
 
 

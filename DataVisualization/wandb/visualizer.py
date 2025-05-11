@@ -830,6 +830,164 @@ class Visualizer:
         return fig
 
 
+    def plot_metrics_vs_dataset_size(self,
+                             runs_by_size: Dict[str, List[ModelRun]],
+                             metric: str,
+                             title: Optional[str] = None,
+                             figsize: Tuple[int, int] = (10, 6),
+                             run_type_colors: Optional[Dict[str, str]] = None,
+                             metric_mapping: Optional[Dict[str, Dict[str, str]]] = None,
+                             size_order: Optional[List[str]] = None,
+                             include_markers: bool = True,
+                             log_scale: bool = False) -> plt.Figure:
+        """
+        Create a line plot showing how a metric changes with dataset size.
+
+        Args:
+            runs_by_size: Dictionary mapping dataset sizes to lists of runs
+                        e.g., {"2K": [AST_2K, PRETRAINED_2K], "20K": [AST_20K, PRETRAINED_20K], ...}
+            metric: Base metric name to plot (e.g., "Val Accuracy")
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            run_type_colors: Dictionary mapping run types to colors
+                            e.g., {"AST": "red", "Pretrained": "blue"}
+            metric_mapping: Optional dictionary mapping run type to metric name patterns
+            size_order: Optional list to specify the order of sizes on the x-axis
+                    e.g., ["2K", "20K", "100K"]
+            include_markers: Whether to add markers to the data points
+            log_scale: Whether to use log scale for the x-axis (useful for wide range of sizes)
+
+        Returns:
+            Matplotlib figure object
+        """
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Determine size order if not provided
+        if size_order is None:
+            # Try to extract numbers from size strings and sort
+            def extract_num(s):
+                return int(''.join(filter(str.isdigit, s)))
+
+            try:
+                size_order = sorted(runs_by_size.keys(), key=extract_num)
+            except:
+                # Fallback to default sort
+                size_order = sorted(runs_by_size.keys())
+
+        # Collect runs by type to plot lines connecting same type
+        run_types = set()
+        runs_by_type = {}
+
+        for size in size_order:
+            for run in runs_by_size.get(size, []):
+                # Determine run type
+                if "AST" in run.shortname:
+                    run_type = "AST"
+                elif "PRETRAINED" in run.shortname:
+                    run_type = "Pretrained"
+                else:
+                    run_type = "Other"
+
+                run_types.add(run_type)
+
+                if run_type not in runs_by_type:
+                    runs_by_type[run_type] = {}
+
+                runs_by_type[run_type][size] = run
+
+        # Plot lines for each run type
+        for run_type in sorted(run_types):
+            sizes = []
+            values = []
+
+            for size in size_order:
+                if size in runs_by_type[run_type]:
+                    run = runs_by_type[run_type][size]
+                    run_data = self.get_run_data(run)
+
+                    # Get the appropriate metric name for this run type
+                    if run_type in metric_mapping and metric in metric_mapping[run_type]:
+                        actual_metric_name = metric_mapping[run_type][metric]
+                    else:
+                        actual_metric_name = metric
+
+                    try:
+                        # Try to get metric info
+                        try:
+                            metric_info = get_metric(actual_metric_name)
+                            display_name = metric_info.display_name
+                        except:
+                            display_name = actual_metric_name
+
+                        metric_series = get_run_metric_data(run_data, actual_metric_name)
+
+                        if len(metric_series) == 0:
+                            print(f"Warning: No data found for metric '{actual_metric_name}' in run '{run.display_name}'")
+                            continue
+
+                        # Get the final value
+                        final_value = float(metric_series.iloc[-1])
+
+                        sizes.append(size)
+                        values.append(final_value)
+
+                    except KeyError as e:
+                        print(f"Error getting {actual_metric_name} for {run.display_name}: {e}")
+
+            # Plot the line if we have data points
+            if sizes and values:
+                # Get color for this run type
+                color = run_type_colors.get(run_type, "gray")
+
+                # Create market style
+                marker = 'o' if include_markers else None
+
+                # Plot the line
+                ax.plot(sizes, values, marker=marker, label=run_type,
+                    color=color, linewidth=2, markersize=8)
+
+                # Add data labels
+                for x, y in zip(sizes, values):
+                    ax.text(x, y + 0.01, f'{y:.3f}', ha='center', va='bottom', fontsize=9)
+
+        # Set plot properties
+        if title:
+            ax.set_title(title)
+        else:
+            try:
+                metric_display = get_metric(metric).display_name
+            except:
+                metric_display = metric
+            ax.set_title(f"{metric_display} vs Dataset Size")
+
+        # Set axis labels
+        ax.set_xlabel("Dataset Size")
+
+        try:
+            y_label = get_metric(metric).display_name
+        except:
+            y_label = metric
+        ax.set_ylabel(y_label)
+
+        # Set x-axis to log scale if requested
+        if log_scale:
+            ax.set_xscale('log')
+
+        # Set x-ticks to the dataset sizes
+        ax.set_xticks(range(len(size_order)))
+        ax.set_xticklabels(size_order)
+
+        # Add grid
+        ax.grid(True, linestyle='--', alpha=0.7)
+
+        # Add legend
+        ax.legend()
+
+        fig.tight_layout()
+
+        return fig
+
+
     def save_figure(self, fig: plt.Figure, filename: str) -> Path:
         """Save a figure to a file in the output directory"""
         # Clean up filename to be filesystem-friendly
