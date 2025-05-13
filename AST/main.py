@@ -113,6 +113,42 @@ class ASVspoofDataset(Dataset):
             "labels": torch.tensor(label, dtype=torch.long)
         }
 
+class ADDdataset(ASVspoofDataset):
+    def __init__(self, data_dir, max_per_class=None, transform=None):
+        self.data_dir = data_dir  # Root dir containing 'genuine/' and 'fake/'
+        self.transform = transform
+
+        self.class_map = {
+            "genuine": 0,
+            "fake": 1
+        }
+
+        if isinstance(max_per_class, int):
+            self.max_per_class = {class_name: max_per_class for class_name in self.class_map}
+        else:
+            self.max_per_class = max_per_class
+
+        self.files = []
+        for class_name, label in self.class_map.items():
+            class_folder = os.path.join(self.data_dir, class_name)  # Note: no 'ASVSpoof/' subfolder
+            if not os.path.isdir(class_folder):
+                raise FileNotFoundError(f"Expected folder '{class_folder}' not found.")
+
+            class_files = [
+                os.path.join(class_folder, file)
+                for file in os.listdir(class_folder)
+                if file.endswith(".npy")
+            ]
+
+            max_count = self.max_per_class.get(class_name) if self.max_per_class else None
+            if max_count is not None:
+                random.shuffle(class_files)
+                class_files = class_files[:min(max_count, len(class_files))]
+
+            self.files.extend([(file_path, label) for file_path in class_files])
+
+        print(f"[ADDdataset] Loaded {len(self.files)} total spectrograms from '{data_dir}'.")
+
 
 # Your desired model name and input length
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
