@@ -1,7 +1,8 @@
 import os
 import torch
+import wandb
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from tqdm import tqdm
 
 from transformers import ASTForAudioClassification
@@ -12,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 from Datasets import ASVspoofDataset, ADDdataset
-
+from wandb_login import login
 import inspect
 
 # from your_dataset_module import ADDdataset
@@ -184,3 +185,19 @@ with torch.no_grad():
 acc = accuracy_score(all_labels, all_preds)
 print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
 print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
+
+cm = confusion_matrix(all_labels, all_preds)
+tn, fp, fn, tp = cm.ravel()
+
+# === Weights & Biases Logging ===
+wandb.login()
+wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
+
+wandb.log({
+    "Accuracy": acc,
+    "True Positives": tp,
+    "True Negatives": tn,
+    "False Positives": fp,
+    "False Negatives": fn
+})
+
