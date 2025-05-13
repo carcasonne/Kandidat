@@ -6,6 +6,11 @@ from tqdm import tqdm
 
 from transformers import ASTForAudioClassification
 
+import os
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from transformers import ASTForAudioClassification
 from Datasets import ASVspoofDataset, ADDdataset
 
 # from your_dataset_module import ADDdataset
@@ -17,12 +22,75 @@ ADD_DATASET_PATH = "spectrograms/ADD"  # Replace with your actual ADD dataset ro
 BATCH_SIZE = 16
 NUM_WORKERS = 4
 
-# === Load the model from saved checkpoint ===
-model = ASTForAudioClassification.from_pretrained(MODEL_CHECKPOINT)
-model.to(DEVICE)
-model.eval()
+
+
+def load_modified_ast_model(model_path):
+    """
+    Load a previously saved AST model with modified architecture
+    for audio spoofing detection.
+
+    Args:
+        model_path: Path to the saved model directory
+
+    Returns:
+        The loaded model with proper architecture modifications
+    """
+    print(f"Loading model from {model_path}...")
+
+    # Load the base model from the saved path
+    model = ASTForAudioClassification.from_pretrained(model_path)
+
+    # Verify and update configuration if needed
+    if model.config.num_labels != 2:
+        print(f"Updating num_labels from {model.config.num_labels} to 2")
+        model.config.num_labels = 2
+
+    # Set or verify label mappings
+    model.config.id2label = {0: "bonafide", 1: "spoof"}
+    model.config.label2id = {"bonafide": 0, "spoof": 1}
+
+    # Check if classifier architecture needs reconstruction
+    # In most cases, the architecture should be saved with the model
+    # But we can verify and fix if needed
+    expected_in_features = model.classifier.dense.in_features
+    expected_out_features = 2
+
+    if model.classifier.dense.out_features != expected_out_features:
+        print(f"Reconstructing classifier dense layer: {expected_in_features} -> {expected_out_features}")
+        model.classifier.dense = nn.Linear(expected_in_features, expected_out_features)
+
+    if model.classifier.out_proj.out_features != expected_out_features:
+        print(f"Reconstructing classifier projection layer: {expected_out_features} -> {expected_out_features}")
+        model.classifier.out_proj = nn.Linear(expected_out_features, expected_out_features)
+
+    # Check and fix position embeddings if needed
+    desired_max_length = 350
+    position_embeddings = model.audio_spectrogram_transformer.embeddings.position_embeddings
+    current_len = position_embeddings.shape[1]
+
+    if current_len != desired_max_length:
+        print(f"Interpolating position embeddings from {current_len} to {desired_max_length}")
+        # Use interpolation
+        interpolated_pos_emb = F.interpolate(
+            position_embeddings.permute(0, 2, 1),  # shape: (1, dim, current_len)
+            size=desired_max_length,
+            mode="linear",
+            align_corners=False
+        ).permute(0, 2, 1)  # shape back to (1, new_len, dim)
+
+        model.audio_spectrogram_transformer.embeddings.position_embeddings = nn.Parameter(interpolated_pos_emb)
+
+    # Verify model.config.max_length
+    if model.config.max_length != 300:
+        print(f"Setting max_length to 300 (was {model.config.max_length})")
+        model.config.max_length = 300
+
+    print("Model loaded successfully with proper architecture")
+    return model
 
 # === Load the ADD dataset ===
+model = load_modified_ast_model("checkpoints/asvspoof-ast-model15_100K_20250506_054106")
+
 samples = {"bonafide": 100000, "fake":100000} # Load all
 test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
