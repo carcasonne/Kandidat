@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 from Datasets import ASVspoofDataset, ADDdataset
 
+import inspect
+
 # from your_dataset_module import ADDdataset
 
 # === CONFIG ===
@@ -21,8 +23,6 @@ MODEL_CHECKPOINT = "checkpoints/asvspoof-ast-model15_100K_20250506_054106"  # Re
 ADD_DATASET_PATH = "spectrograms/ADD"  # Replace with your actual ADD dataset root
 BATCH_SIZE = 16
 NUM_WORKERS = 4
-
-
 
 def load_modified_ast_model(model_path):
     """
@@ -49,19 +49,66 @@ def load_modified_ast_model(model_path):
     model.config.id2label = {0: "bonafide", 1: "spoof"}
     model.config.label2id = {"bonafide": 0, "spoof": 1}
 
-    # Check if classifier architecture needs reconstruction
-    # In most cases, the architecture should be saved with the model
-    # But we can verify and fix if needed
-    expected_in_features = model.classifier.dense.in_features
-    expected_out_features = 2
+    # Debug the classifier structure
+    print(f"Classifier type: {type(model.classifier).__name__}")
 
-    if model.classifier.dense.out_features != expected_out_features:
-        print(f"Reconstructing classifier dense layer: {expected_in_features} -> {expected_out_features}")
-        model.classifier.dense = nn.Linear(expected_in_features, expected_out_features)
+    # Inspect the classifier in more detail
+    if hasattr(model.classifier, '__dict__'):
+        for attr_name in dir(model.classifier):
+            if not attr_name.startswith('_') and not callable(getattr(model.classifier, attr_name)):
+                try:
+                    attr_value = getattr(model.classifier, attr_name)
+                    if isinstance(attr_value, nn.Module):
+                        print(f"  - {attr_name}: {type(attr_value).__name__}")
+                except:
+                    pass
 
-    if model.classifier.out_proj.out_features != expected_out_features:
-        print(f"Reconstructing classifier projection layer: {expected_out_features} -> {expected_out_features}")
-        model.classifier.out_proj = nn.Linear(expected_out_features, expected_out_features)
+    # Attempt to reconstruct classifier based on the original code
+    # We need to adapt to the actual structure of the model
+    try:
+        if hasattr(model.classifier, 'dense'):
+            # Original architecture assumed in your code
+            expected_in_features = model.classifier.dense.in_features
+
+            # Modify dense layer
+            print(f"Modifying dense layer in_features={expected_in_features}, out_features=2")
+            model.classifier.dense = nn.Linear(expected_in_features, 2)
+
+            # Check if out_proj exists and modify if needed
+            if hasattr(model.classifier, 'out_proj'):
+                print("Modifying out_proj layer out_features=2")
+                model.classifier.out_proj = nn.Linear(2, 2)
+        else:
+            # For ASTMLPHead or other architectures
+            print("Alternative classifier structure detected")
+
+            # Try to identify the final layer in the classifier
+            final_layer = None
+            for name, module in model.classifier.named_modules():
+                if isinstance(module, nn.Linear):
+                    if hasattr(module, 'out_features'):
+                        print(f"Found linear layer: {name} with out_features={module.out_features}")
+                        final_layer = (name, module)
+
+            if final_layer and final_layer[1].out_features != 2:
+                layer_name, layer = final_layer
+                print(f"Modifying {layer_name} to output 2 classes")
+                if '.' in layer_name:
+                    # Handle nested attributes
+                    parts = layer_name.split('.')
+                    parent_name = '.'.join(parts[:-1])
+                    attr_name = parts[-1]
+                    parent = model.classifier
+                    for part in parts[:-1]:
+                        parent = getattr(parent, part)
+                    setattr(parent, attr_name, nn.Linear(layer.in_features, 2))
+                else:
+                    setattr(model.classifier, layer_name, nn.Linear(layer.in_features, 2))
+            elif not final_layer:
+                print("WARNING: Could not identify the final classification layer")
+    except Exception as e:
+        print(f"Error modifying classifier: {e}")
+        print("Please inspect the model structure and modify the code accordingly")
 
     # Check and fix position embeddings if needed
     desired_max_length = 350
@@ -87,6 +134,8 @@ def load_modified_ast_model(model_path):
 
     print("Model loaded successfully with proper architecture")
     return model
+
+
 
 # === Load the ADD dataset ===
 model = load_modified_ast_model("checkpoints/asvspoof-ast-model15_100K_20250506_054106")
