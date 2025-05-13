@@ -24,20 +24,28 @@ ADD_DATASET_PATH = "spectrograms/ADD"  # Replace with your actual ADD dataset ro
 BATCH_SIZE = 16
 NUM_WORKERS = 4
 
-def load_modified_ast_model(model_path):
+
+def load_modified_ast_model(model_path, device=None):
     """
     Load a previously saved AST model with modified architecture
     for audio spoofing detection.
 
     Args:
         model_path: Path to the saved model directory
+        device: The device to load the model to ('cuda', 'cpu', or None to auto-detect)
 
     Returns:
         The loaded model with proper architecture modifications
     """
-    print(f"Loading model from {model_path}...")
+    # Determine device if not specified
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else:
+        device = torch.device(device)
 
-    # Load the base model from the saved path
+    print(f"Loading model from {model_path} to {device}...")
+
+    # Load the base model from the saved path and move it to the specified device
     model = ASTForAudioClassification.from_pretrained(model_path)
 
     # Verify and update configuration if needed
@@ -132,9 +140,11 @@ def load_modified_ast_model(model_path):
         print(f"Setting max_length to 300 (was {model.config.max_length})")
         model.config.max_length = 300
 
-    print("Model loaded successfully with proper architecture")
-    return model
+    # Move the model to the specified device
+    model = model.to(device)
+    print(f"Model successfully loaded and moved to {device}")
 
+    return model
 
 
 # === Load the ADD dataset ===
