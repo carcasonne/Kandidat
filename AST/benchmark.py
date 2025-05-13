@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from transformers import ASTForAudioClassification
 
-from AST.main import ADDdataset
+from main import ADDdataset
 
 # from your_dataset_module import ADDdataset
 
