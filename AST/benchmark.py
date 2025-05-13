@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from transformers import ASTForAudioClassification
 
-from main import ADDdataset
+from Datasets import ASVspoofDataset, ADDdataset
 
 # from your_dataset_module import ADDdataset
 
@@ -23,7 +23,8 @@ model.to(DEVICE)
 model.eval()
 
 # === Load the ADD dataset ===
-test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH)
+samples = {"bonafide": 100000, "fake":100000} # Load all
+test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS)
 
 # === Benchmarking Loop ===
