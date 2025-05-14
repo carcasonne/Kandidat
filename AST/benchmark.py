@@ -29,6 +29,7 @@ AST_MODEL_CHECKPOINT = "checkpoints/asvspoof-ast-model15_100K_20250506_054106"  
 PRETRAIN_MODEL_CHECKPOINT = "checkpoints/asvspoof-pretrain-model19_20250507_081555"
 ADD_DATASET_PATH = "spectrograms/ADD"  # Replace with your actual ADD dataset root
 FOR_DATASET_PATH = "spectrograms/FoR/for-2sec/for-2seconds"
+ASVS_DATASET_PATH = "spectrograms"
 BATCH_SIZE = 16
 
 
@@ -239,6 +240,7 @@ AST_model = load_modified_ast_model(
 Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
 
 samples = {"bonafide": 100000, "fake":100000} # Load all
+asv_samples = {"bonafide": 10000, "fake": 10000}
 
 add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
 add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -246,6 +248,11 @@ add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=Fa
 for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
 for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
+asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
+asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+run_name_1 = f"Sanity_check"
+benchmark(AST_model, asvs_test_loader, run_name_1)
 
 run_name = f"ASVSpoof_benchmark_ADD"
 benchmark(AST_model, add_test_loader, run_name)
