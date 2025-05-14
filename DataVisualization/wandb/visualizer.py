@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Union, Tuple, Any, Callable
 import matplotlib.cm as cm
 from matplotlib.colors import Normalize
-
+from matplotlib.patches import Patch
 from metric_categories import MetricCategory, MetricInfo, get_metric
 from model_runs import ModelRun
 
@@ -824,6 +824,735 @@ class Visualizer:
                                     marker='s', markersize=10, label=run.display_name)
                             for run in all_runs]
             ax.legend(handles=legend_elements, loc='best')
+
+        fig.tight_layout()
+
+        return fig
+
+
+    def plot_train_val_grouped_metrics(self,
+                                runs: List[ModelRun],
+                                metrics: List[str],
+                                title: Optional[str] = None,
+                                figsize: Tuple[int, int] = (14, 8),
+                                run_colors: Optional[Dict[str, str]] = None,
+                                metric_mapping: Optional[Dict[str, Dict[str, str]]] = None,
+                                bar_width: float = 0.2,
+                                space_between_groups: float = 1.0,
+                                show_values: bool = True) -> plt.Figure:
+        """
+        Create a grouped bar chart displaying training and validation metrics side by side for each run.
+
+        Args:
+            runs: List of ModelRun objects to include
+            metrics: List of metrics to plot. Should contain pairs like ["Train Accuracy", "Val Accuracy"]
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            run_colors: Optional dictionary mapping run IDs or types to specific colors
+            metric_mapping: Optional dictionary mapping run type to metric name patterns
+            bar_width: Width of individual bars
+            space_between_groups: Space between groups of bars for different runs
+            show_values: Whether to show value labels on bars
+
+        Returns:
+            Matplotlib figure object
+        """
+        # Import Patch for legend
+        from matplotlib.patches import Patch
+
+        # Create figure with adjusted height to accommodate the legend at bottom
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Number of runs and metrics
+        n_runs = len(runs)
+        n_metric_pairs = len(metrics) // 2  # Assuming metrics come in train/val pairs
+
+        # Adjust bar width based on number of metrics to prevent overcrowding
+        if n_metric_pairs > 2:
+            bar_width = min(bar_width, 0.15)
+
+        # Total width for all bars in a group
+        total_group_width = n_metric_pairs * 2 * bar_width + space_between_groups
+
+        # Generate colors for runs if not provided
+        if run_colors is None:
+            cmap = cm.get_cmap('tab10')
+            norm = Normalize(vmin=0, vmax=max(n_runs-1, 1))
+            run_colors = {run.id: cmap(norm(i)) for i, run in enumerate(runs)}
+
+        # Generate distinct colors for different metrics
+        cyberpunk_colors = [
+            "#00916e",  # Vibrant teal green
+            "#d60036",  # Crimson red
+            "#0057b7",  # Electric blue
+            "#ff9500",  # Bright orange
+            "#6a00ff",  # Vivid purple
+            "#1a2e35",  # Dark midnight
+            "#00b050",  # Bright green
+            "#e53935",  # Bright red
+            "#00a2ff",  # Bright blue
+            "#ff6a00"   # Bright amber
+        ]
+        metric_colors = {i: cyberpunk_colors[i % len(cyberpunk_colors)] for i in range(n_metric_pairs)}
+
+        # For storing metric values to set y-axis limits
+        all_values = []
+
+        # Create legend elements
+        legend_elements = []
+
+        # Process each run
+        for i, run in enumerate(runs):
+            run_data = self.get_run_data(run)
+
+            # Determine run type for metric mapping
+            run_type = "AST" if "AST" in run.shortname else "Pretrained"
+
+            # Group start position
+            group_start = i * total_group_width
+
+            # Process each pair of metrics (train/val)
+            for j in range(n_metric_pairs):
+                train_idx = j * 2
+                val_idx = j * 2 + 1
+
+                if train_idx >= len(metrics) or val_idx >= len(metrics):
+                    continue
+
+                train_metric_name = metrics[train_idx]
+                val_metric_name = metrics[val_idx]
+
+                # Get metric short name for legend (without Train/Val prefix)
+                metric_short_name = train_metric_name.replace("Train ", "")
+                if " " not in metric_short_name:
+                    # Handle case where it's just "Accuracy" without "Train" prefix
+                    metric_short_name = train_metric_name
+
+                # Get the appropriate metric names for this run type
+                if metric_mapping and run_type in metric_mapping:
+                    if train_metric_name in metric_mapping[run_type]:
+                        actual_train_metric = metric_mapping[run_type][train_metric_name]
+                    else:
+                        actual_train_metric = train_metric_name
+
+                    if val_metric_name in metric_mapping[run_type]:
+                        actual_val_metric = metric_mapping[run_type][val_metric_name]
+                    else:
+                        actual_val_metric = val_metric_name
+                else:
+                    actual_train_metric = train_metric_name
+                    actual_val_metric = val_metric_name
+
+                # Get metric color
+                metric_color = metric_colors[j]
+
+                # Add to legend if first run (to avoid duplicates)
+                if i == 0:
+                    train_patch = Patch(facecolor=metric_color, alpha=0.9, edgecolor='black',
+                                    label=f"{metric_short_name} (Train)")
+                    val_patch = Patch(facecolor=metric_color, alpha=0.6, edgecolor='black',
+                                    hatch='////', label=f"{metric_short_name} (Val)")
+                    legend_elements.extend([train_patch, val_patch])
+
+                # Process training metric
+                try:
+                    train_series = get_run_metric_data(run_data, actual_train_metric)
+                    if len(train_series) > 0:
+                        train_value = float(train_series.iloc[-1])
+                        all_values.append(train_value)
+
+                        # Bar position
+                        train_pos = group_start + j * 2 * bar_width
+
+                        # Plot bar with metric-specific color
+                        train_bar = ax.bar(train_pos, train_value, bar_width * 0.9,
+                                        color=metric_color, alpha=0.9,
+                                        edgecolor='black', linewidth=0.5)
+
+                        # Add value label if requested
+                        if show_values:
+                            # Calculate font size - smaller when there are more metrics
+                            font_size = max(5, 8 - n_metric_pairs // 2)
+
+                            # Only add labels to bars that are tall enough to be significant
+                            if train_value > 0.05:  # Adjust threshold as needed
+                                # Add value with rotation for better readability
+                                ax.text(train_pos, train_value + 0.01,
+                                    f'{train_value:.3f}',
+                                    ha='center', va='bottom',
+                                    fontsize=font_size,
+                                    rotation=45 if n_metric_pairs > 2 else 0)
+                except KeyError as e:
+                    print(f"Error getting {actual_train_metric} for {run.display_name}: {e}")
+
+                # Process validation metric
+                try:
+                    val_series = get_run_metric_data(run_data, actual_val_metric)
+                    if len(val_series) > 0:
+                        val_value = float(val_series.iloc[-1])
+                        all_values.append(val_value)
+
+                        # Bar position - right next to the training bar
+                        val_pos = group_start + j * 2 * bar_width + bar_width
+
+                        # Plot bar with same color but hatched
+                        val_bar = ax.bar(val_pos, val_value, bar_width * 0.9,
+                                    color=metric_color, alpha=0.6,
+                                    edgecolor='black', linewidth=0.5, hatch='////')
+
+                        # Add value label if requested
+                        if show_values:
+                            # Calculate font size - smaller when there are more metrics
+                            font_size = max(5, 8 - n_metric_pairs // 2)
+
+                            # Only add labels to bars that are tall enough to be significant
+                            if val_value > 0.05:  # Adjust threshold as needed
+                                # Add value with rotation for better readability
+                                ax.text(val_pos, val_value + 0.01,
+                                    f'{val_value:.3f}',
+                                    ha='center', va='bottom',
+                                    fontsize=font_size,
+                                    rotation=45 if n_metric_pairs > 2 else 0)
+                except KeyError as e:
+                    print(f"Error getting {actual_val_metric} for {run.display_name}: {e}")
+
+        # Set plot properties
+        if title:
+            ax.set_title(title)
+        else:
+            ax.set_title("Train vs Validation Metrics Comparison")
+
+        # Set x-axis ticks at the middle of each group
+        group_centers = []
+        group_labels = []
+        for i, run in enumerate(runs):
+            group_center = i * total_group_width + (n_metric_pairs * bar_width)
+            group_centers.append(group_center)
+            group_labels.append(run.shortname)
+
+        ax.set_xticks(group_centers)
+        ax.set_xticklabels(group_labels, rotation=45, ha='right')
+
+        # Set y-axis limits with some headroom for labels
+        if all_values:
+            max_value = max(all_values)
+            # Add more headroom if we're showing rotated value labels
+            headroom = 1.25 if n_metric_pairs > 2 and show_values else 1.15
+            ax.set_ylim(0, max_value * headroom)
+
+        # Add grid lines for better readability
+        ax.yaxis.grid(True, linestyle='--', alpha=0.7)
+
+        # Add legend below the plot
+        # First adjust the subplot parameters to create space at the bottom
+        bottom_space = 0.25 if n_metric_pairs > 2 else 0.2
+        fig.subplots_adjust(bottom=bottom_space)
+
+        # Then place the legend below the axes
+        ax.legend(handles=legend_elements,
+                loc='upper center',
+                bbox_to_anchor=(0.5, -0.25),  # Position below the axes
+                ncol=min(len(legend_elements), 4),  # Arrange in multiple columns
+                frameon=False)
+
+        fig.tight_layout()
+
+        return fig
+
+
+
+    def plot_train_val_metrics_dot_plot(self,
+                                runs: List[ModelRun],
+                                metrics: List[str],
+                                title: Optional[str] = None,
+                                figsize: Tuple[int, int] = (14, 10),
+                                run_colors: Optional[Dict[str, str]] = None,
+                                metric_mapping: Optional[Dict[str, Dict[str, str]]] = None) -> plt.Figure:
+        """
+        Create an improved dot plot showing training and validation metrics as connected dots.
+
+        Args:
+            runs: List of ModelRun objects to include
+            metrics: List of metrics to plot (should be pairs of train/val)
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            run_colors: Optional dictionary mapping run IDs or types to specific colors
+            metric_mapping: Optional dictionary mapping run type to metric name patterns
+
+        Returns:
+            Matplotlib figure object
+        """
+        from matplotlib.patches import Patch
+        from matplotlib.lines import Line2D
+
+        # Number of metric pairs
+        n_metric_pairs = len(metrics) // 2
+
+        # Create subplots - one per metric type
+        fig, axes = plt.subplots(n_metric_pairs, 1, figsize=figsize, sharex=True)
+        if n_metric_pairs == 1:
+            axes = [axes]
+
+        # Generate colors for runs if not provided
+        if run_colors is None:
+            cmap = cm.get_cmap('tab10')
+            norm = Normalize(vmin=0, vmax=max(len(runs)-1, 1))
+            run_colors = {run.id: cmap(norm(i)) for i, run in enumerate(runs)}
+
+        # For storing all values to set x-axis limits
+        all_values = []
+        run_positions = np.arange(len(runs)) * 2  # Doubled spacing for better readability
+
+        # Process each metric pair in a separate subplot
+        for ax_idx, j in enumerate(range(0, len(metrics), 2)):
+            ax = axes[ax_idx]
+
+            if j + 1 >= len(metrics):
+                continue
+
+            train_metric_name = metrics[j]
+            val_metric_name = metrics[j+1]
+
+            # Get metric short name for axis label
+            metric_short_name = train_metric_name.replace("Train ", "")
+            #if " " not in metric_short_name:
+            #    metric_short_name = train_metric_name
+
+            # Process each run
+            for i, run in enumerate(runs):
+                run_data = self.get_run_data(run)
+
+                # Determine run type for metric mapping
+                run_type = "AST" if "AST" in run.shortname else "Pretrained"
+
+                # Get run color
+                if run.id in run_colors:
+                    run_color = run_colors[run.id]
+                elif run_type in run_colors:
+                    run_color = run_colors[run_type]
+                else:
+                    run_color = f"C{i}"
+
+                # Get the appropriate metric names for this run type
+                if metric_mapping and run_type in metric_mapping:
+                    if train_metric_name in metric_mapping[run_type]:
+                        actual_train_metric = metric_mapping[run_type][train_metric_name]
+                    else:
+                        actual_train_metric = train_metric_name
+
+                    if val_metric_name in metric_mapping[run_type]:
+                        actual_val_metric = metric_mapping[run_type][val_metric_name]
+                    else:
+                        actual_val_metric = val_metric_name
+                else:
+                    actual_train_metric = train_metric_name
+                    actual_val_metric = val_metric_name
+
+                # Get train value
+                try:
+                    train_series = get_run_metric_data(run_data, actual_train_metric)
+                    train_value = float(train_series.iloc[-1]) if len(train_series) > 0 else np.nan
+                    all_values.append(train_value)
+                except KeyError as e:
+                    print(f"Error getting {actual_train_metric} for {run.display_name}: {e}")
+                    train_value = np.nan
+
+                # Get val value
+                try:
+                    val_series = get_run_metric_data(run_data, actual_val_metric)
+                    val_value = float(val_series.iloc[-1]) if len(val_series) > 0 else np.nan
+                    all_values.append(val_value)
+                except KeyError as e:
+                    print(f"Error getting {actual_val_metric} for {run.display_name}: {e}")
+                    val_value = np.nan
+
+                # Plot the train and val values horizontally
+                if not np.isnan(train_value) and not np.isnan(val_value):
+                    # Horizontal line connecting train and val
+                    ax.plot([train_value, val_value], [run_positions[i], run_positions[i]],
+                        color=run_color, alpha=0.7, linestyle='-', linewidth=2)
+
+                    # Train marker
+                    ax.scatter(train_value, run_positions[i], s=100, color=run_color,
+                            edgecolor='black', linewidth=1, zorder=10, marker='o')
+
+                    # Val marker
+                    ax.scatter(val_value, run_positions[i], s=100, color=run_color,
+                            edgecolor='black', linewidth=1, zorder=10,
+                            alpha=0.6, marker='s')
+
+                    # Add value labels
+                    ax.annotate(f'{train_value:.3f}', xy=(train_value, run_positions[i]),
+                            xytext=(35, 0), textcoords='offset points',
+                            ha='right', va='center', fontsize=9)
+
+                    ax.annotate(f'{val_value:.3f}', xy=(val_value, run_positions[i]),
+                            xytext=(-35, 0), textcoords='offset points',
+                            ha='left', va='center', fontsize=9)
+
+            # Add horizontal grid lines
+            ax.grid(True, axis='y', linestyle='-', alpha=0.1)
+
+            # Vertical grid lines
+            ax.grid(True, axis='x', linestyle='--', alpha=0.3)
+
+            # Set y-axis ticks and run labels
+            ax.set_yticks(run_positions)
+            ax.set_yticklabels([run.shortname for run in runs])
+
+            # Set metric title with large font on the right side
+            ax.text(0.99, 0.5, metric_short_name,
+                transform=ax.transAxes,
+                fontsize=14, fontweight='bold',
+                ha='right', va='center',
+                bbox=dict(facecolor='white', alpha=0.8, edgecolor='none', pad=4))
+
+            # Remove top, right and left spines
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+
+            # Show only the bottom spine
+            ax.spines['bottom'].set_position(('outward', 10))
+
+            # Show major x-axis ticks
+            ax.tick_params(axis='x', which='major', length=5, width=1.5)
+
+        # Clean non-nan values
+        all_values = [v for v in all_values if not np.isnan(v)]
+
+        # Set consistent x-axis limits across all subplots
+        if all_values:
+            min_value = max(0, min(all_values) * 0.95)  # Don't go below 0
+            max_value = max(all_values) * 1.05  # Add a little space
+
+            for ax in axes:
+                ax.set_xlim(min_value, max_value)
+
+        # Create custom legend
+        legend_elements = [
+            Line2D([0], [0], marker='o', color='w', markerfacecolor='gray',
+                markeredgecolor='black', markersize=10, label="Training"),
+            Line2D([0], [0], marker='s', color='w', markerfacecolor='gray',
+                markeredgecolor='black', markersize=10, alpha=0.6, label="Validation"),
+        ]
+
+        # Find the right location for the legend
+        if n_metric_pairs > 1:
+            # Place legend at the bottom
+            fig.legend(handles=legend_elements,
+                    loc='upper center',
+                    bbox_to_anchor=(0.5, 0.04),
+                    ncol=2,
+                    frameon=False)
+        else:
+            # Place legend inside the single plot
+            axes[0].legend(handles=legend_elements,
+                        loc='upper right',
+                        frameon=False)
+
+        # Set overall title
+        if title:
+            fig.suptitle(title, fontsize=16, y=0.98)
+        else:
+            fig.suptitle("Training vs Validation Metrics Comparison", fontsize=16, y=0.98)
+
+        # Add x-axis label at the bottom
+        fig.text(0.5, 0.01, 'Metric Value', ha='center', fontsize=12)
+
+        # Adjust spacing between subplots
+        plt.subplots_adjust(hspace=0.3)
+
+        fig.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+        return fig
+
+
+    def plot_train_val_metrics_grid(self,
+                            runs: List[ModelRun],
+                            metrics: List[str],
+                            title: Optional[str] = None,
+                            figsize: Tuple[int, int] = (14, 10),
+                            run_colors: Optional[Dict[str, str]] = None,
+                            metric_mapping: Optional[Dict[str, Dict[str, str]]] = None) -> plt.Figure:
+        """
+        Create a grid of small multiple bar charts, with each run in its own row.
+
+        Args:
+            runs: List of ModelRun objects to include
+            metrics: List of metrics to plot. Should contain pairs like ["Train Accuracy", "Val Accuracy"]
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            run_colors: Optional dictionary mapping run IDs or types to specific colors
+            metric_mapping: Optional dictionary mapping run type to metric name patterns
+
+        Returns:
+            Matplotlib figure object
+        """
+        from matplotlib.patches import Patch
+
+        n_runs = len(runs)
+        n_metric_pairs = len(metrics) // 2
+
+        # Adjust figsize based on number of runs and metrics
+        if figsize is None:
+            figsize = (3 * n_metric_pairs, 2 * n_runs)
+
+        # Create figure with grid of subplots - one row per run
+        fig, axes = plt.subplots(n_runs, n_metric_pairs, figsize=figsize,
+                                sharey='row', sharex='col')
+
+        # Handle case with single run or single metric
+        if n_runs == 1 and n_metric_pairs == 1:
+            axes = np.array([[axes]])
+        elif n_runs == 1:
+            axes = axes.reshape(1, -1)
+        elif n_metric_pairs == 1:
+            axes = axes.reshape(-1, 1)
+
+        # Generate colors for runs if not provided
+        if run_colors is None:
+            cmap = cm.get_cmap('tab10')
+            norm = Normalize(vmin=0, vmax=max(n_runs-1, 1))
+            run_colors = {run.id: cmap(norm(i)) for i, run in enumerate(runs)}
+
+        # Define colors for train vs validation
+        train_alpha = 0.9
+        val_alpha = 0.5
+        bar_width = 0.35
+
+        # For storing metric names for column headers
+        metric_names = []
+
+        # Process each metric pair
+        for j in range(n_metric_pairs):
+            train_idx = j * 2
+            val_idx = j * 2 + 1
+
+            if train_idx >= len(metrics) or val_idx >= len(metrics):
+                continue
+
+            train_metric_name = metrics[train_idx]
+            val_metric_name = metrics[val_idx]
+
+            # Get metric short name for axis label
+            metric_short_name = train_metric_name.replace("Train ", "")
+            if " " not in metric_short_name:
+                metric_short_name = train_metric_name
+
+            metric_names.append(metric_short_name)
+
+            # Process each run
+            for i, run in enumerate(runs):
+                ax = axes[i, j]
+                run_data = self.get_run_data(run)
+
+                # Determine run type for metric mapping
+                run_type = "AST" if "AST" in run.shortname else "Pretrained"
+
+                # Get run color
+                if run.id in run_colors:
+                    run_color = run_colors[run.id]
+                elif run_type in run_colors:
+                    run_color = run_colors[run_type]
+                else:
+                    run_color = f"C{i}"
+
+                # Get the appropriate metric names for this run type
+                if metric_mapping and run_type in metric_mapping:
+                    if train_metric_name in metric_mapping[run_type]:
+                        actual_train_metric = metric_mapping[run_type][train_metric_name]
+                    else:
+                        actual_train_metric = train_metric_name
+
+                    if val_metric_name in metric_mapping[run_type]:
+                        actual_val_metric = metric_mapping[run_type][val_metric_name]
+                    else:
+                        actual_val_metric = val_metric_name
+                else:
+                    actual_train_metric = train_metric_name
+                    actual_val_metric = val_metric_name
+
+                # Get train value
+                try:
+                    train_series = get_run_metric_data(run_data, actual_train_metric)
+                    train_value = float(train_series.iloc[-1]) if len(train_series) > 0 else 0
+                except KeyError as e:
+                    print(f"Error getting {actual_train_metric} for {run.display_name}: {e}")
+                    train_value = 0
+
+                # Get val value
+                try:
+                    val_series = get_run_metric_data(run_data, actual_val_metric)
+                    val_value = float(val_series.iloc[-1]) if len(val_series) > 0 else 0
+                except KeyError as e:
+                    print(f"Error getting {actual_val_metric} for {run.display_name}: {e}")
+                    val_value = 0
+
+                # Plot bars
+                ax.bar(1, train_value, width=bar_width, color=run_color, alpha=train_alpha,
+                    edgecolor='black', linewidth=0.5, label="Train")
+                ax.bar(2, val_value, width=bar_width, color=run_color, alpha=val_alpha,
+                    edgecolor='black', linewidth=0.5, label="Val")
+
+                # Add value labels
+                ax.text(1, train_value + 0.01, f'{train_value:.3f}',
+                    ha='center', va='bottom', fontsize=8)
+                ax.text(2, val_value + 0.01, f'{val_value:.3f}',
+                    ha='center', va='bottom', fontsize=8)
+
+                # Set axis limits and ticks
+                ax.set_xlim(0.5, 2.5)
+                ax.set_xticks([1, 2])
+                ax.set_xticklabels(["Train", "Val"])
+
+                # Add row labels (run names) on the first column
+                if j == 0:
+                    ax.set_ylabel(run.shortname, fontsize=10, rotation=0, ha='right')
+
+                # Remove top and right spines
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+
+                # Add grid
+                ax.grid(axis='y', linestyle='--', alpha=0.3)
+
+        # Add column headers (metric names)
+        for j, metric_name in enumerate(metric_names):
+            axes[0, j].set_title(metric_name)
+
+        # Set overall title
+        if title:
+            fig.suptitle(title, fontsize=16, y=0.98)
+        else:
+            fig.suptitle("Training vs Validation Metrics by Run", fontsize=16, y=0.98)
+
+        # Add legend at the bottom
+        legend_elements = [
+            Patch(facecolor='gray', alpha=train_alpha, edgecolor='black', label="Train"),
+            Patch(facecolor='gray', alpha=val_alpha, edgecolor='black', label="Val")
+        ]
+        fig.legend(handles=legend_elements,
+                loc='upper center',
+                bbox_to_anchor=(0.5, 0.02),
+                ncol=2,
+                frameon=False)
+
+        fig.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+        return fig
+
+    def plot_train_val_metrics_heatmap(self,
+                                runs: List[ModelRun],
+                                metrics: List[str],
+                                title: Optional[str] = None,
+                                figsize: Tuple[int, int] = (12, 8),
+                                cmap: str = "magma",
+                                metric_mapping: Optional[Dict[str, Dict[str, str]]] = None) -> plt.Figure:
+        """
+        Create a heatmap grid showing training and validation metrics for all runs.
+
+        Args:
+            runs: List of ModelRun objects to include
+            metrics: List of metrics to plot. Should contain pairs like ["Train Accuracy", "Val Accuracy"]
+            title: Optional title for the plot
+            figsize: Figure size (width, height)
+            cmap: Colormap to use for the heatmap
+            metric_mapping: Optional dictionary mapping run type to metric name patterns
+
+        Returns:
+            Matplotlib figure object
+        """
+        import seaborn as sns
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # Number of runs and metric pairs
+        n_runs = len(runs)
+        n_metric_pairs = len(metrics) // 2
+
+        # Create data structure for heatmap
+        heatmap_data = np.zeros((n_runs * 2, n_metric_pairs))
+
+        # Create row and column labels
+        row_labels = []
+        col_labels = []
+
+        # Process each run and metric
+        for i, run in enumerate(runs):
+            run_data = self.get_run_data(run)
+
+            # Determine run type for metric mapping
+            run_type = "AST" if "AST" in run.shortname else "Pretrained"
+
+            # Add row labels for train and val
+            row_labels.append(f"{run.shortname} (Train)")
+            row_labels.append(f"{run.shortname} (Val)")
+
+            # Process each metric pair
+            for j in range(n_metric_pairs):
+                train_idx = j * 2
+                val_idx = j * 2 + 1
+
+                if train_idx >= len(metrics) or val_idx >= len(metrics):
+                    continue
+
+                train_metric_name = metrics[train_idx]
+                val_metric_name = metrics[val_idx]
+
+                # Get metric short name for column label
+                metric_short_name = train_metric_name.replace("Train ", "")
+                if " " not in metric_short_name:
+                    metric_short_name = train_metric_name
+
+                # Add column label (only once)
+                if i == 0:
+                    col_labels.append(metric_short_name)
+
+                # Get the appropriate metric names for this run type
+                if metric_mapping and run_type in metric_mapping:
+                    if train_metric_name in metric_mapping[run_type]:
+                        actual_train_metric = metric_mapping[run_type][train_metric_name]
+                    else:
+                        actual_train_metric = train_metric_name
+
+                    if val_metric_name in metric_mapping[run_type]:
+                        actual_val_metric = metric_mapping[run_type][val_metric_name]
+                    else:
+                        actual_val_metric = val_metric_name
+                else:
+                    actual_train_metric = train_metric_name
+                    actual_val_metric = val_metric_name
+
+                # Get train value
+                try:
+                    train_series = get_run_metric_data(run_data, actual_train_metric)
+                    train_value = float(train_series.iloc[-1]) if len(train_series) > 0 else np.nan
+                    heatmap_data[i*2, j] = train_value
+                except KeyError as e:
+                    print(f"Error getting {actual_train_metric} for {run.display_name}: {e}")
+                    heatmap_data[i*2, j] = np.nan
+
+                # Get val value
+                try:
+                    val_series = get_run_metric_data(run_data, actual_val_metric)
+                    val_value = float(val_series.iloc[-1]) if len(val_series) > 0 else np.nan
+                    heatmap_data[i*2 + 1, j] = val_value
+                except KeyError as e:
+                    print(f"Error getting {actual_val_metric} for {run.display_name}: {e}")
+                    heatmap_data[i*2 + 1, j] = np.nan
+
+        # Create heatmap
+        sns.heatmap(heatmap_data, annot=True, cmap=cmap, fmt=".3f",
+                linewidths=0.5, cbar_kws={"shrink": 0.8},
+                ax=ax, xticklabels=col_labels, yticklabels=row_labels)
+
+        # Set title
+        if title:
+            ax.set_title(title)
+        else:
+            ax.set_title("Training vs Validation Metrics Comparison")
 
         fig.tight_layout()
 

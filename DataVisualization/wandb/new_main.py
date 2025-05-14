@@ -27,11 +27,11 @@ login()
 
 visualizer = Visualizer(output_dir=Path("custom_plots"))
 
-individualFigures = True
-comparisonFigures = True
-confusionComparison = True
-finalComparisons = True
-sizeVsPerf = True
+individualFigures = False
+comparisonFigures = False
+confusionComparison = False
+finalComparisons = False
+sizeVsPerf = False
 
 run_colors = {
     AST_2K.id: "#CC2222",           # Dark Red
@@ -91,6 +91,66 @@ runs_by_size = {
     "20K": [AST_20K, PRETRAINED_20K],
     "100K": [AST_100K, PRETRAINED_100K]
 }
+
+
+
+
+teeeeeest_dotplot = visualizer.plot_train_val_metrics_dot_plot(
+    runs=ALL_RUNS,
+    metrics=["Train Accuracy", "Val Accuracy", "Train Precision", "Val Precision", "Train Recall", "Val Recall", "Train F1 Score", "Val F1 Score"],
+    title="Training vs Validation Metrics Comparison",
+    run_colors=run_colors,
+    metric_mapping=metric_mapping
+)
+visualizer.save_figure(teeeeeest_dotplot, "teeeest_dotplot.png")
+
+
+
+if False:
+    teeeeeest_grid = visualizer.plot_train_val_metrics_grid(
+        runs=ALL_RUNS,
+        metrics=["Train Accuracy", "Val Accuracy", "Train Precision", "Val Precision", "Train Recall", "Val Recall"],
+        title="Training vs Validation Metrics Comparison",
+        run_colors=run_colors,
+        metric_mapping=metric_mapping
+    )
+    visualizer.save_figure(teeeeeest_grid, "teeeest_grid.png")
+
+
+
+
+    teeeeeest_heatmap = visualizer.plot_train_val_metrics_heatmap(
+        runs=ALL_RUNS,
+        metrics=["Train Accuracy", "Val Accuracy", "Train Precision", "Val Precision", "Train Recall", "Val Recall", "Train F1 Score", "Val F1 Score"],
+        title="Training vs Validation Metrics Comparison",
+        cmap="PuBuGn",
+        metric_mapping=metric_mapping
+    )
+    visualizer.save_figure(teeeeeest_heatmap, "teeeest_heatmap.png")
+
+
+
+if False:
+    bar_plot_all_metrics = visualizer.plot_train_val_grouped_metrics(
+        runs=ALL_RUNS,
+        metrics=["Train Accuracy", "Val Accuracy", "Train Precision", "Val Precision", "Train Recall", "Val Recall"],
+        title="Training vs Validation Metrics Comparison",
+        run_colors=run_colors,
+        metric_mapping=metric_mapping
+    )
+    visualizer.save_figure(bar_plot_all_metrics, "TEEEEEEEST.png")
+
+
+    var_plot_accuracy = visualizer.plot_train_val_grouped_metrics(
+        runs=ALL_RUNS,
+        metrics=["Train Accuracy", "Val Accuracy"],
+        title="Training vs Validation Metrics Comparison",
+        run_colors=run_colors,
+        metric_mapping=metric_mapping
+    )
+    visualizer.save_figure(var_plot_accuracy, "TEEEEEEEST2.png")
+
+
 
 
 if sizeVsPerf:
