@@ -230,6 +230,8 @@ def benchmark(model, data_loader, flavor_text):
         "False Negatives": fn
     })
 
+    wandb.finish()
+
 # === Load the ADD dataset ===
 AST_model = load_modified_ast_model(
     base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
