@@ -233,7 +233,7 @@ def benchmark(model, data_loader, flavor_text):
     model.eval()
 
     with torch.no_grad():
-        for batch in tqdm(data_loader, desc="Benchmarking on ADD"):
+        for batch in tqdm(data_loader, desc="Benchmarking"):
             inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
             labels = batch["labels"].to(DEVICE)
 
@@ -245,7 +245,7 @@ def benchmark(model, data_loader, flavor_text):
 
     # === Evaluation Metrics ===
     acc = accuracy_score(all_labels, all_preds)
-    print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
+    print(f"\n✅ Benchmark Accuracy: {acc * 100:.2f}%")
     print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
 
     cm = confusion_matrix(all_labels, all_preds)
