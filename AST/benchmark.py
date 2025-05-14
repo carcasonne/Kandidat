@@ -1,10 +1,14 @@
 import os
+from datetime import datetime
+
 import torch
 import wandb
+from sympy import false
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from tqdm import tqdm
-
+import torch
+import timm
 from transformers import ASTForAudioClassification
 
 import os
@@ -12,7 +16,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import ASTForAudioClassification
-from Datasets import ASVspoofDataset, ADDdataset
+from torchvision import datasets, transforms
+
+
+from Datasets import ASVspoofDataset, ADDdataset, FoRdataset, ASVspoofDatasetPretrain, ADDdatasetPretrain, FoRdatasetPretrain
 from wandb_login import login
 import inspect
 
@@ -20,10 +27,12 @@ import inspect
 
 # === CONFIG ===
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_CHECKPOINT = "checkpoints/asvspoof-ast-model15_100K_20250506_054106"  # Replace with your actual saved path
-ADD_DATASET_PATH = "spectrograms"  # Replace with your actual ADD dataset root
+AST_MODEL_CHECKPOINT = "checkpoints/asvspoof-ast-model15_100K_20250506_054106"  # Replace with your actual saved path
+PRETRAIN_MODEL_CHECKPOINT = "checkpoints/asvspoof-pretrain-model19_20250507_081555"
+ADD_DATASET_PATH = "spectrograms/ADD"  # Replace with your actual ADD dataset root
+FOR_DATASET_PATH = "spectrograms/FoR/for-2sec/for-2seconds"
+ASVS_DATASET_PATH = "spectrograms"
 BATCH_SIZE = 16
-NUM_WORKERS = 4
 
 
 def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
@@ -155,49 +164,176 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     print(f"Model successfully prepared with fine-tuned last layers")
 
     return model
+
+def load_pretrained_model(saved_model_path, device=None):
+    # Recreate the model architecture
+    # Determine device if not specified
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else:
+        device = torch.device(device)
+
+    model_name = "vit_base_patch16_224"
+    model = timm.create_model(model_name, pretrained=True, in_chans=1)
+
+    # Modify classifier head for binary classification
+    num_ftrs = model.head.in_features
+    model.head = nn.Linear(num_ftrs, 2)
+
+    # Freeze all layers
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Unfreeze head and last transformer block
+    for param in model.head.parameters():
+        param.requires_grad = True
+    for param in model.blocks[-1].parameters():
+        param.requires_grad = True
+
+    # Load saved state dict
+    model.load_state_dict(torch.load(saved_model_path, map_location=device))
+    return model
+
+def load_base_ast_model():
+    base_model_name = "MIT/ast-finetuned-audioset-10-10-0.4593"
+    print(f"Loading base model {base_model_name}")
+    # Start with the original pretrained model
+    model = ASTForAudioClassification.from_pretrained(base_model_name)
+
+    # Apply architecture modifications
+    model.config.max_length = 300
+    model.config.num_labels = 2
+    model.config.id2label = {0: "bonafide", 1: "spoof"}
+    model.config.label2id = {"bonafide": 0, "spoof": 1}
+
+    # Modify the classifier for 2 classes (same as in your training code)
+    if hasattr(model.classifier, 'dense'):
+        model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)
+        if hasattr(model.classifier, 'out_proj'):
+            model.classifier.out_proj = nn.Linear(2, 2)
+
+    # Interpolate positional embeddings
+    desired_max_length = 350
+    position_embeddings = model.audio_spectrogram_transformer.embeddings.position_embeddings
+    old_len = position_embeddings.shape[1]
+    if old_len != desired_max_length:
+        print(f"Interpolating position embeddings from {old_len} to {desired_max_length}")
+        interpolated_pos_emb = F.interpolate(
+            position_embeddings.permute(0, 2, 1),
+            size=desired_max_length,
+            mode="linear",
+            align_corners=False
+        ).permute(0, 2, 1)
+        model.audio_spectrogram_transformer.embeddings.position_embeddings = nn.Parameter(interpolated_pos_emb)
+    return model
+
+def get_input_and_labels(is_AST, batch):
+    if is_AST:
+        inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
+        labels = batch["labels"].to(DEVICE)
+        return inputs, labels
+    else:
+        inputs, labels = batch  # batch is a tuple (inputs, labels)
+        inputs = inputs.to(DEVICE)
+        labels = labels.to(DEVICE)
+        return inputs, labels
+
+def benchmark(model, data_loader, flavor_text, is_AST):
+    # === Benchmarking Loop ===
+    all_preds = []
+    all_labels = []
+    model.eval()
+
+    with torch.no_grad():
+        for batch in tqdm(data_loader, desc="Benchmarking"):
+            inputs, labels = get_input_and_labels(is_AST, batch)
+
+            outputs = model(inputs)
+            preds = torch.argmax(outputs, dim=1)
+
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    # === Evaluation Metrics ===
+    acc = accuracy_score(all_labels, all_preds)
+    print(f"\n✅ Benchmark Accuracy: {acc * 100:.2f}%")
+    print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
+
+    cm = confusion_matrix(all_labels, all_preds)
+    tn, fp, fn, tp = cm.ravel()
+
+    # === Weights & Biases Logging ===
+    wandb.login()
+    date = datetime.now().strftime("%Y%m%d_%H%M%S")
+    wandb.init(project="Benchmark", entity="Holdet_thesis", name=flavor_text + "_" + date)
+
+    wandb.log({
+        "Accuracy": acc,
+        "True Positives": tp,
+        "True Negatives": tn,
+        "False Positives": fp,
+        "False Negatives": fn
+    })
+
+    wandb.finish()
+
 # === Load the ADD dataset ===
-model = load_modified_ast_model(
+AST_model = load_modified_ast_model(
     base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
-    finetuned_model_path=MODEL_CHECKPOINT,      # Your saved model
+    finetuned_model_path=AST_MODEL_CHECKPOINT,      # Your saved model
     device="cuda"
 )
 
+Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
+Pretrain_model.to(DEVICE)
+
+base_AST_model = load_base_ast_model()
+base_AST_model.to(DEVICE)
+
 samples = {"bonafide": 100000, "fake":100000} # Load all
-test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+asv_samples = {"bonafide": 10000, "fake": 10000}
 
-# === Benchmarking Loop ===
-all_preds = []
-all_labels = []
+# AST Datasets
+add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-with torch.no_grad():
-    for batch in tqdm(test_loader, desc="Benchmarking on ADD"):
-        inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
-        labels = batch["labels"].to(DEVICE)
+for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
+for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-        outputs = model(inputs)
-        preds = torch.argmax(outputs.logits, dim=1)
+asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
+asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-        all_preds.extend(preds.cpu().numpy())
-        all_labels.extend(labels.cpu().numpy())
+#Pretrain datasets
 
-# === Evaluation Metrics ===
-acc = accuracy_score(all_labels, all_preds)
-print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
-print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.Normalize(mean=[0.485], std=[0.229]),
+])
 
-cm = confusion_matrix(all_labels, all_preds)
-tn, fp, fn, tp = cm.ravel()
 
-# === Weights & Biases Logging ===
-wandb.login()
-wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
+pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples, transform=transform)
+pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-wandb.log({
-    "Accuracy": acc,
-    "True Positives": tp,
-    "True Negatives": tn,
-    "False Positives": fp,
-    "False Negatives": fn
-})
+pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
+pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+
+run_name2 = f"Pretrain_benchmark_ADD"
+benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
+
+run_name3 = f"Pretrain_benchmark_FoR"
+benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
+
+run_name_1 = f"Sanity_check"
+benchmark(AST_model, asvs_test_loader, run_name_1, True)
+
+run_name_2 = f"Sanity_check_base"
+benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
+
+run_name = f"AST_benchmark_ADD"
+benchmark(AST_model, add_test_loader, run_name, True)
+
+run_name1 = f"AST_benchmark_FoR"
+benchmark(AST_model, for_test_loader, run_name1, True)
+
 
