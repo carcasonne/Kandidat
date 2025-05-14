@@ -15,6 +15,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import ASTForAudioClassification
+from torchvision import datasets, transforms
+
 
 from Datasets import ASVspoofDataset, ADDdataset, FoRdataset, ASVspoofDatasetPretrain, ADDdatasetPretrain, FoRdatasetPretrain
 from wandb_login import login
@@ -290,10 +292,17 @@ asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=as
 asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 #Pretrain datasets
-pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.Normalize(mean=[0.485], std=[0.229]),
+])
+
+
+pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples, transform=transform)
 pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=asv_samples)
+pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
 pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 
