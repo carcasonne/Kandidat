@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 
+from DataVisualization.wandb.new_main import pretrained_model
 from Datasets import ASVspoofDataset, ADDdataset, FoRdataset
 from wandb_login import login
 import inspect
@@ -191,11 +192,45 @@ def load_pretrained_model(saved_model_path, device=None):
     model.load_state_dict(torch.load(saved_model_path, map_location=device))
     return model
 
+def load_base_ast_model():
+    base_model_name = "MIT/ast-finetuned-audioset-10-10-0.4593"
+    print(f"Loading base model {base_model_name}")
+    # Start with the original pretrained model
+    model = ASTForAudioClassification.from_pretrained(base_model_name)
+
+    # Apply architecture modifications
+    model.config.max_length = 300
+    model.config.num_labels = 2
+    model.config.id2label = {0: "bonafide", 1: "spoof"}
+    model.config.label2id = {"bonafide": 0, "spoof": 1}
+
+    # Modify the classifier for 2 classes (same as in your training code)
+    if hasattr(model.classifier, 'dense'):
+        model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)
+        if hasattr(model.classifier, 'out_proj'):
+            model.classifier.out_proj = nn.Linear(2, 2)
+
+    # Interpolate positional embeddings
+    desired_max_length = 350
+    position_embeddings = model.audio_spectrogram_transformer.embeddings.position_embeddings
+    old_len = position_embeddings.shape[1]
+    if old_len != desired_max_length:
+        print(f"Interpolating position embeddings from {old_len} to {desired_max_length}")
+        interpolated_pos_emb = F.interpolate(
+            position_embeddings.permute(0, 2, 1),
+            size=desired_max_length,
+            mode="linear",
+            align_corners=False
+        ).permute(0, 2, 1)
+        model.audio_spectrogram_transformer.embeddings.position_embeddings = nn.Parameter(interpolated_pos_emb)
+    return model
+
 
 def benchmark(model, data_loader, flavor_text):
     # === Benchmarking Loop ===
     all_preds = []
     all_labels = []
+    model.eval()
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Benchmarking on ADD"):
@@ -240,6 +275,8 @@ AST_model = load_modified_ast_model(
 
 Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
 
+base_AST_model = load_base_ast_model()
+
 samples = {"bonafide": 100000, "fake":100000} # Load all
 asv_samples = {"bonafide": 10000, "fake": 10000}
 
@@ -252,18 +289,23 @@ for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=Fa
 asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
 asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
+
+run_name2 = f"Pretrain_benchmark_ADD"
+benchmark(pretrained_model, add_test_loader, run_name2)
+
+run_name3 = f"Pretrain_benchmark_FoR"
+benchmark(pretrained_model, for_test_loader, run_name3)
+
 run_name_1 = f"Sanity_check"
 benchmark(AST_model, asvs_test_loader, run_name_1)
 
-run_name = f"ASVSpoof_benchmark_ADD"
+run_name_2 = f"Sanity_check_base"
+benchmark(base_AST_model, asvs_test_loader, run_name_2)
+
+run_name = f"AST_benchmark_ADD"
 benchmark(AST_model, add_test_loader, run_name)
 
-run_name1 = f"ASVSpoof_benchmark_FoR"
+run_name1 = f"AST_benchmark_FoR"
 benchmark(AST_model, for_test_loader, run_name1)
 
-run_name2 = f"Pretrain_benchmark_ADD"
-benchmark(AST_model, for_test_loader, run_name2)
-
-run_name3 = f"Pretrain_benchmark_FoR"
-benchmark(AST_model, for_test_loader, run_name3)
 
