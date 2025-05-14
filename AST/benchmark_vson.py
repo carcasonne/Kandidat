@@ -20,7 +20,7 @@ import inspect
 
 # === CONFIG ===
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_CHECKPOINT = "checkpoints/asvspoof-pretrain-model19_20250507_081555"  # Replace with your actual saved path
+MODEL_CHECKPOINT = "checkpoints/checkpoints/asvspoof-pretrain-model19_20250507_081555"  # Replace with your actual saved path
 ADD_DATASET_PATH = "spectrograms"  # Replace with your actual ADD dataset root
 BATCH_SIZE = 16
 NUM_WORKERS = 4
