@@ -16,7 +16,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 
-from DataVisualization.wandb.new_main import pretrained_model
 from Datasets import ASVspoofDataset, ADDdataset, FoRdataset, ASVspoofDatasetPretrain, ADDdatasetPretrain, FoRdatasetPretrain
 from wandb_login import login
 import inspect
@@ -299,10 +298,10 @@ pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, sh
 
 
 run_name2 = f"Pretrain_benchmark_ADD"
-benchmark(pretrained_model, pre_add_test_loader, run_name2)
+benchmark(Pretrain_model, pre_add_test_loader, run_name2)
 
 run_name3 = f"Pretrain_benchmark_FoR"
-benchmark(pretrained_model, pre_for_test_loader, run_name3)
+benchmark(Pretrain_model, pre_for_test_loader, run_name3)
 
 run_name_1 = f"Sanity_check"
 benchmark(AST_model, asvs_test_loader, run_name_1)
