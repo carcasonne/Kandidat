@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 
 from DataVisualization.wandb.new_main import pretrained_model
-from Datasets import ASVspoofDataset, ADDdataset, FoRdataset
+from Datasets import ASVspoofDataset, ADDdataset, FoRdataset, ASVspoofDatasetPretrain, ADDdatasetPretrain, FoRdatasetPretrain
 from wandb_login import login
 import inspect
 
@@ -280,6 +280,7 @@ base_AST_model = load_base_ast_model()
 samples = {"bonafide": 100000, "fake":100000} # Load all
 asv_samples = {"bonafide": 10000, "fake": 10000}
 
+# AST Datasets
 add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
 add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
@@ -289,12 +290,19 @@ for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=Fa
 asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
 asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
+#Pretrain datasets
+pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=asv_samples)
+pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
 
 run_name2 = f"Pretrain_benchmark_ADD"
-benchmark(pretrained_model, add_test_loader, run_name2)
+benchmark(pretrained_model, pre_add_test_loader, run_name2)
 
 run_name3 = f"Pretrain_benchmark_FoR"
-benchmark(pretrained_model, for_test_loader, run_name3)
+benchmark(pretrained_model, pre_for_test_loader, run_name3)
 
 run_name_1 = f"Sanity_check"
 benchmark(AST_model, asvs_test_loader, run_name_1)

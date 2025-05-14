@@ -168,3 +168,46 @@ class FoRdataset(ASVspoofDataset):
             self.files.extend([(file_path, label) for file_path in class_files])
 
         print(f"[FoRdataset] Loaded {len(self.files)} total spectrograms from '{data_dir}'.")
+
+
+class ASVspoofDatasetPretrain(ASVspoofDataset):
+    def __getitem__(self, idx):
+        file_path, label = self.files[idx]
+
+        # Load precomputed log-mel spectrogram
+        spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
+        spectrogram = spectrogram.T
+        spectrogram = torch.from_numpy(spectrogram).unsqueeze(0)  # (1, 128, T)
+
+        if self.transform:
+            spectrogram = self.transform(spectrogram)
+
+        return spectrogram, label
+
+class FoRdatasetPretrain(FoRdataset):
+    def __getitem__(self, idx):
+        file_path, label = self.files[idx]
+
+        # Load precomputed log-mel spectrogram
+        spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
+        spectrogram = spectrogram.T
+        spectrogram = torch.from_numpy(spectrogram).unsqueeze(0)  # (1, 128, T)
+
+        if self.transform:
+            spectrogram = self.transform(spectrogram)
+
+        return spectrogram, label
+
+class ADDdatasetPretrain(ADDdataset):
+    def __getitem__(self, idx):
+        file_path, label = self.files[idx]
+
+        # Load precomputed log-mel spectrogram
+        spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
+        spectrogram = spectrogram.T
+        spectrogram = torch.from_numpy(spectrogram).unsqueeze(0)  # (1, 128, T)
+
+        if self.transform:
+            spectrogram = self.transform(spectrogram)
+
+        return spectrogram, label
