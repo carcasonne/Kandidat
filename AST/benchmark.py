@@ -3,6 +3,7 @@ from datetime import datetime
 
 import torch
 import wandb
+from sympy import false
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from tqdm import tqdm
@@ -226,8 +227,18 @@ def load_base_ast_model():
         model.audio_spectrogram_transformer.embeddings.position_embeddings = nn.Parameter(interpolated_pos_emb)
     return model
 
+def get_input_and_labels(is_AST, batch):
+    if is_AST:
+        inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
+        labels = batch["labels"].to(DEVICE)
+        return inputs, labels
+    else:
+        inputs, labels = batch  # batch is a tuple (inputs, labels)
+        inputs = inputs.to(DEVICE)
+        labels = labels.to(DEVICE)
+        return inputs, labels
 
-def benchmark(model, data_loader, flavor_text):
+def benchmark(model, data_loader, flavor_text, is_AST):
     # === Benchmarking Loop ===
     all_preds = []
     all_labels = []
@@ -235,8 +246,7 @@ def benchmark(model, data_loader, flavor_text):
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Benchmarking"):
-            inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
-            labels = batch["labels"].to(DEVICE)
+            inputs, labels = get_input_and_labels(is_AST, batch)
 
             outputs = model(inputs)
             preds = torch.argmax(outputs.logits, dim=1)
@@ -307,21 +317,21 @@ pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, sh
 
 
 run_name2 = f"Pretrain_benchmark_ADD"
-benchmark(Pretrain_model, pre_add_test_loader, run_name2)
+benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
 
 run_name3 = f"Pretrain_benchmark_FoR"
-benchmark(Pretrain_model, pre_for_test_loader, run_name3)
+benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
 
 run_name_1 = f"Sanity_check"
-benchmark(AST_model, asvs_test_loader, run_name_1)
+benchmark(AST_model, asvs_test_loader, run_name_1, True)
 
 run_name_2 = f"Sanity_check_base"
-benchmark(base_AST_model, asvs_test_loader, run_name_2)
+benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
 
 run_name = f"AST_benchmark_ADD"
-benchmark(AST_model, add_test_loader, run_name)
+benchmark(AST_model, add_test_loader, run_name, True)
 
 run_name1 = f"AST_benchmark_FoR"
-benchmark(AST_model, for_test_loader, run_name1)
+benchmark(AST_model, for_test_loader, run_name1, True)
 
 
