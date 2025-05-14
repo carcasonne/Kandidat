@@ -16,8 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 
-from AST.Datasets import FoRdataset
-from Datasets import ASVspoofDataset, ADDdataset
+from Datasets import ASVspoofDataset, ADDdataset, FoRdataset
 from wandb_login import login
 import inspect
 
