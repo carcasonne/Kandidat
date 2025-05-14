@@ -285,8 +285,10 @@ AST_model = load_modified_ast_model(
 )
 
 Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
+Pretrain_model.to(DEVICE)
 
 base_AST_model = load_base_ast_model()
+base_AST_model.to(DEVICE)
 
 samples = {"bonafide": 100000, "fake":100000} # Load all
 asv_samples = {"bonafide": 10000, "fake": 10000}
