@@ -35,8 +35,8 @@ sizeVsPerf = True
 
 run_colors = {
     AST_2K.id: "#CC2222",           # Dark Red
-    AST_20K.id: "#0099AA",          # Dark Blue
-    AST_100K.id: "#CC9900",         # Dark Yellow
+    AST_20K.id: "#CC9900",          # Dark Yellow
+    AST_100K.id: "#0099AA",         # Dark Blue
     PRETRAINED_2K.id: "#008F4F",    # Dark Green
     PRETRAINED_20K.id: "#CC0088",   # Dark Pink
     PRETRAINED_100K.id: "#f26849"   # Dark Orange
@@ -172,7 +172,7 @@ if finalComparisons:
             run_colors=run_colors,
             metric_mapping=metric_mapping
         )
-        visualizer.save_figure(final_acc_comparison, f"FINAL_{display_name}_{metric_name}.png")
+        visualizer.save_figure(final_acc_comparison, f"BarChart_{display_name}_{metric_name}.png")
 
 
 
@@ -196,7 +196,7 @@ if confusionComparison:
                     title=pretty_title,
                     figsize=(8, 6)
                 )
-        visualizer.save_figure(fig_conf_train, f"COMPARISON_{size}_{metric_type}_confusion_matrixes.png")
+        visualizer.save_figure(fig_conf_train, f"ConfusionMatrix_{size}_{metric_type}.png")
 
 
 if individualFigures:
@@ -239,9 +239,9 @@ if individualFigures:
             )
 
 
-        visualizer.save_figure(fig_conf_train, f"{run.shortname}_train_confusion_matrix.png")
-        visualizer.save_figure(fig_conf_val, f"{run.shortname}_val_confusion_matrix.png")
-        visualizer.save_figure(fig_conf_both, f"{run.shortname}_confusion_matrixes.png")
+        visualizer.save_figure(fig_conf_train, f"ConfusionMatrix__{run.shortname}_train.png")
+        visualizer.save_figure(fig_conf_val, f"ConfusionMatrix__{run.shortname}_val.png")
+        visualizer.save_figure(fig_conf_both, f"ConfusionMatrix__{run.shortname}_comparison.png")
 
 
         print("Making train/val loss graphs")
@@ -252,7 +252,7 @@ if individualFigures:
             figsize=(10, 6),
             smoothing=5
         )
-        visualizer.save_figure(fig_loss, f"{run.shortname}_train_val_loss.png")
+        visualizer.save_figure(fig_loss, f"LineGraph_{run.shortname}_loss_train_val.png")
 
         print("Making classification metrics graphs")
 
@@ -271,8 +271,8 @@ if individualFigures:
                 figsize=(10, 6),
                 smoothing=5
             )
-            pretty_name = f"{metric[2].lower().replace(' ','_')}_val_vs_train"
-            visualizer.save_figure(fig_class_metrics, f"{run.shortname}_{pretty_name}.png")
+            pretty_name = f"{metric[2].lower().replace(' ','_')}_train_val"
+            visualizer.save_figure(fig_class_metrics, f"LineGraph_{run.shortname}_{pretty_name}.png")
 
 
 if comparisonFigures:
@@ -292,7 +292,7 @@ if comparisonFigures:
         smoothing=5,
         run_colors=run_colors
     )
-    visualizer.save_figure(ast_loss_comparison, "AST_ALL_MODELS_loss_comparison.png")
+    visualizer.save_figure(ast_loss_comparison, "LineGraph_AST_loss_train_val.png")
 
     # Compare accuracy for all AST models
     ast_acc_comparison = visualizer.compare_metrics_across_runs(
@@ -303,7 +303,7 @@ if comparisonFigures:
         smoothing=5,
         run_colors=run_colors
     )
-    visualizer.save_figure(ast_acc_comparison, "AST_ALL_MODELS_accuracy_comparison.png")
+    visualizer.save_figure(ast_acc_comparison, "LineGraph_AST_accuracy_train_val.png")
 
     # Compare train/vall loss for all Pretrained models
     pretrained_loss_comparison = visualizer.compare_metrics_across_runs(
@@ -318,7 +318,7 @@ if comparisonFigures:
             "Val Loss": "dashed"
         }
     )
-    visualizer.save_figure(pretrained_loss_comparison, "PRETRAINED_ALL_MODELS_loss_comparison.png")
+    visualizer.save_figure(pretrained_loss_comparison, "LineGraph_Pretrained_loss_train_val.png")
 
     # Compare accuracy for all Pretrained models
     pretrained_acc_comparison = visualizer.compare_metrics_across_runs(
@@ -333,7 +333,7 @@ if comparisonFigures:
             "Val Accuracy": "dashed"
         }
     )
-    visualizer.save_figure(pretrained_acc_comparison, "PRETRAINED_ALL_MODELS_accuracy_comparison.png")
+    visualizer.save_figure(pretrained_acc_comparison, "LineGraph_Pretrained_accuracy_train_val.png")
 
     # Compare a metric across models for same size
     size_pairs = [
@@ -372,7 +372,7 @@ if comparisonFigures:
                     val: "dashed"
                 }
             )
-            visualizer.save_figure(comparison_figure, f"COMPARISON_{size_label}_{name}.png")
+            visualizer.save_figure(comparison_figure, f"LineGraph_{size_label}_{name}_train_val.png")
 
 
     # Add direct AST vs Pretrained comparison across all sizes
@@ -390,9 +390,8 @@ if comparisonFigures:
             "Val Accuracy": "dashed"
         }
     )
-    visualizer.save_figure(all_models_comparison, "ALL_MODELS_accuracy_comparison.png")
+    visualizer.save_figure(all_models_comparison, "LineGraph_AllModels_accuracy_train_val.png")
 
-    # Similarly for F1 Score if you have it
     f1_comparison = visualizer.compare_metrics_across_runs(
         runs=[AST_2K, AST_20K, AST_100K, PRETRAINED_2K, PRETRAINED_20K, PRETRAINED_100K],
         metrics=["Train F1 Score", "Val F1 Score", "Val F1 Score"],
@@ -406,7 +405,7 @@ if comparisonFigures:
             "Val F1 Score": "dashed"
         }
     )
-    visualizer.save_figure(f1_comparison, "ALL_MODELS_f1_comparison.png")
+    visualizer.save_figure(f1_comparison, "LineGraph_AllModels_F1Score_train_val.png")
 
 print("All comparison plots created successfully!")
 
