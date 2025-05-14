@@ -123,3 +123,48 @@ class ADDdataset(ASVspoofDataset):
             self.files.extend([(file_path, label) for file_path in class_files])
 
         print(f"[ADDdataset] Loaded {len(self.files)} total spectrograms from '{data_dir}'.")
+
+
+class FoRdataset(ASVspoofDataset):
+    def __init__(self, data_dir, max_per_class=None, transform=None):
+        """
+        :param data_dir: Root path to 'FoR/for-2sec/for-2seconds'
+        :param max_per_class: Optional int or dict of max samples per class
+        :param transform: Optional transform
+        """
+        self.data_dir = data_dir  # Should be 'FoR/for-2sec/for-2seconds'
+        self.transform = transform
+
+        self.class_map = {
+            "Real": 0,
+            "Fake": 1
+        }
+
+        if isinstance(max_per_class, int):
+            self.max_per_class = {class_name: max_per_class for class_name in self.class_map}
+        else:
+            self.max_per_class = max_per_class  # Can be None or a dict per class
+
+        self.files = []
+        for class_name, label in self.class_map.items():
+            class_files = []
+            for split in ["Training", "Testing"]:
+                class_folder = os.path.join(self.data_dir, split, class_name)
+                if not os.path.isdir(class_folder):
+                    raise FileNotFoundError(f"Expected folder '{class_folder}' not found.")
+
+                split_files = [
+                    os.path.join(class_folder, file)
+                    for file in os.listdir(class_folder)
+                    if file.endswith(".npy")
+                ]
+                class_files.extend(split_files)
+
+            max_count = self.max_per_class.get(class_name) if self.max_per_class else None
+            if max_count is not None:
+                random.shuffle(class_files)
+                class_files = class_files[:min(max_count, len(class_files))]
+
+            self.files.extend([(file_path, label) for file_path in class_files])
+
+        print(f"[FoRdataset] Loaded {len(self.files)} total spectrograms from '{data_dir}'.")
