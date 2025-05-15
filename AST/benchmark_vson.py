@@ -16,6 +16,8 @@ from Datasets import ASVspoofDataset, ADDdataset
 from wandb_login import login
 import inspect
 
+login()
+
 # from your_dataset_module import ADDdataset
 
 # === CONFIG ===
@@ -190,7 +192,7 @@ cm = confusion_matrix(all_labels, all_preds)
 tn, fp, fn, tp = cm.ravel()
 
 # === Weights & Biases Logging ===
-wandb.login()
+login()
 wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
 
 wandb.log({
