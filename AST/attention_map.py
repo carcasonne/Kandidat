@@ -1,73 +1,82 @@
-import torch
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
 import os
-import random
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from torchvision.transforms.functional import normalize
+from tqdm import tqdm
+import cv2
 
-from torch.utils.data import DataLoader
-from torchvision.transforms.functional import to_pil_image
-import torchvision.transforms as transforms
+from Datasets import ASVspoofDataset
+from benchmark_vson import load_modified_ast_model
 
-def calc_attention_maps(model, flavor_text, device, train_dataset, samples, get_random=False):
-    model.eval()
-    model.to(device)
 
-    save_dir = "attention_maps"
+def generate_attention_maps(model, dataset, num_samples=5, save_dir="attention-maps", device="cuda"):
     os.makedirs(save_dir, exist_ok=True)
 
-    sample_indices = random.sample(range(len(train_dataset)), samples) if get_random else list(range(samples))
+    model.to(device)
+    model.eval()
+    with torch.no_grad():
+        for i in tqdm(range(min(num_samples, len(dataset))), desc="Generating attention maps"):
+            sample = dataset[i]
+            input_tensor = sample["input_values"].unsqueeze(0).to(device)  # shape: (1, 300, 128)
+            label = sample["labels"].item()
 
-    vis_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
+            # Forward pass with attention
+            outputs = model(
+                input_values=input_tensor,
+                output_attentions=True,
+                return_dict=True
+            )
 
-    for idx, batch in enumerate(vis_loader):
-        if idx not in sample_indices:
-            continue
+            # Get last layer attention
+            attn = outputs.attentions[-1]  # shape: (1, num_heads, num_tokens, num_tokens)
+            attn = attn[0]  # (num_heads, num_tokens, num_tokens)
 
-        inputs = batch["input_values"].to(device)
-        labels = batch["labels"].item()
+            # Average over all heads
+            attn_avg = attn.mean(dim=0)  # shape: (num_tokens, num_tokens)
 
-        # If you have original images, get them (assuming they are in batch["image"])
-        original_image = batch["input_values"][0]  # (C, H, W) format
-        if isinstance(original_image, torch.Tensor):
-            original_image = to_pil_image(original_image)
+            cls_attn = attn_avg[0, 1:]  # (batch_size, num_tokens - 1)
+            attn_map_1d = cls_attn.cpu().numpy()  # shape: (349,)
 
-        with torch.no_grad():
-            outputs = model(input_values=inputs, output_attentions=True)
-            attentions = outputs.attentions  # List of attention layers
+            # Rescale to spectrogram size directly (300x128)
+            # We'll reshape to a square and then resize, or just interpolate to (300x128)
 
-        # Take the attention from the last layer, average over heads
-        last_layer_attention = attentions[-1][0]  # (num_heads, seq_len, seq_len)
-        avg_attention = last_layer_attention.mean(dim=0)  # (seq_len, seq_len)
+            # Method: reshape to a long vector → 2D → resize
+            sqrt_len = int(np.ceil(np.sqrt(attn_map_1d.shape[0])))  # ~18.68 → 19
+            pad_len = sqrt_len**2 - attn_map_1d.shape[0]            # pad with zeros
+            attn_padded = np.pad(attn_map_1d, (0, pad_len), mode="constant")
+            attn_square = attn_padded.reshape(sqrt_len, sqrt_len)
 
-        # Depending on your model, you might need to select the [CLS] token's attention
-        # e.g., avg_attention = avg_attention[0, 1:] if it includes CLS token.
+            # Resize to (300, 128) for overlay
+            attn_resized = cv2.resize(attn_square, (128, 300))  # (H, W)
 
-        # For visualization, you often take the attention of the [CLS] token to all patches
-        attention_to_patches = avg_attention[0, 1:]  # Assuming first token (index 0) is [CLS]
+            # Load original spectrogram
+            spectrogram = sample["input_values"].cpu().numpy()  # shape: (300, 128)
 
-        # Reshape the attention to image-like grid
-        num_patches = attention_to_patches.shape[0]
-        grid_size = int(np.sqrt(num_patches))
-        attention_map = attention_to_patches.reshape(grid_size, grid_size).cpu().numpy()
+            # Plot and overlay
+            fig, ax = plt.subplots(figsize=(10, 4))
+            ax.imshow(spectrogram, origin='lower', aspect='auto', cmap='viridis')
+            ax.imshow(attn_resized, cmap='jet', alpha=0.4, origin='lower', aspect='auto')
+            ax.set_title(f"Sample {i} - Label: {'bonafide' if label == 0 else 'spoof'}")
+            ax.axis("off")
 
-        # Normalize the attention map
-        attention_map -= attention_map.min()
-        attention_map /= attention_map.max()
+            save_path = os.path.join(save_dir, f"attention_map_{i}_label_{label}.png")
+            plt.tight_layout()
+            plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1)
+            plt.close()
 
-        # Resize attention map to match original image size
-        attention_map = torch.tensor(attention_map)
-        attention_map = transforms.Resize((original_image.height, original_image.width))(attention_map.unsqueeze(0)).squeeze(0).numpy()
 
-        # Plotting
-        plt.figure(figsize=(8, 8))
-        plt.imshow(original_image)
-        plt.imshow(attention_map, cmap='jet', alpha=0.5)  # alpha controls transparency
-        plt.axis('off')
-        plt.title(f"Sample {idx} | Label: {labels}")
+#Load model
+path = r"checkpoints/asvspoof-ast-model0_20250513_172231"
+DATASET_PATH = r"spectrograms"
+samples = {"bonafide": 10, "fake":10} # Load all
 
-        filename = os.path.join(save_dir, f"{flavor_text}_attention_sample_{idx}_label_{labels}.png")
-        plt.savefig(filename, bbox_inches="tight")
-        plt.close()
+model = load_modified_ast_model(
+    base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
+    finetuned_model_path=path,      # Your saved model
+    device="cuda"
+)
+dataset = ASVspoofDataset(data_dir=DATASET_PATH, max_per_class=samples)
 
-        print(f"Saved attention overlay map for sample {idx} to {filename}")
+
+generate_attention_maps(model ,dataset, num_samples=5)
