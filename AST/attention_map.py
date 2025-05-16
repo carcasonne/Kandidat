@@ -214,7 +214,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="at
     print(f"Enhanced visualizations saved to {save_dir}")
 
 #Load model
-path = r"checkpoints/asvspoof-ast-model0_20250513_172231"
+path = r"checkpoints/asvspoof-ast-model15_100K_20250506_054106"
 DATASET_PATH = r"spectrograms"
 samples = {"bonafide": 10, "fake":10} # Load all
 
@@ -226,4 +226,4 @@ model = load_modified_ast_model(
 dataset = ASVspoofDataset(data_dir=DATASET_PATH, max_per_class=samples)
 
 
-generate_enhanced_attention_maps(model ,dataset, num_samples=5)
+generate_enhanced_attention_maps(model ,dataset, num_samples=10)
