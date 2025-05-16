@@ -167,7 +167,13 @@ if __name__ == "__main__":
     test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    num_epochs = 2
+    # sanity check
+
+    from collections import Counter
+    labels = [sample['labels'] for sample in test_dataset]
+    print(Counter(labels))
+
+    num_epochs = 1
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
@@ -216,14 +222,11 @@ if __name__ == "__main__":
     print(f"🏁 Final Accuracy: {acc * 100:.2f}%")
     print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
     # === Evaluation Metrics ===
-    acc = accuracy_score(all_labels, all_preds)
-    print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
-    print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
 
     cm = confusion_matrix(all_labels, all_preds)
     tn, fp, fn, tp = cm.ravel()
 
-    print(f"TN: {tn}, FP: {fp} \n FN: {FN}, TP: {tp}")
+    print(f"TN: {tn}, FP: {fp} \n FN: {fn}, TP: {tp}")
 
     # === Weights & Biases Logging ===
     login()
