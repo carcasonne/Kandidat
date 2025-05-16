@@ -40,12 +40,6 @@ MODEL_NAME = "MIT/ast-finetuned-audioset-10-10-0.4593"
 # Check for GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Load Feature Extractor
-feature_extractor = AutoFeatureExtractor.from_pretrained(MODEL_NAME)
-
-
-
-
 
 # Your desired model name and input length
 model = ASTForAudioClassification.from_pretrained(MODEL_NAME)
@@ -249,6 +243,3 @@ for epoch in range(num_epochs):
           f"Val Loss = {val_loss:.4f}, Val Acc = {val_acc:.2f}%, "
           f"Val Precision = {val_precision:.4f}, Val Recall = {val_recall:.4f}, Val F1 = {val_f1:.4f}")
 
-#shit is so aids I cant take it anymore
-#if attention_maps:
-#    calc_attention_maps(model, "AST", device, train_dataset, 20)
