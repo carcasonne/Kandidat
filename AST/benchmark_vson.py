@@ -167,21 +167,54 @@ if __name__ == "__main__":
     test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    # === Benchmarking Loop ===
-    all_preds = []
-    all_labels = []
+    num_epochs = 2
+    criterion = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    with torch.no_grad():
-        for batch in tqdm(test_loader, desc="Benchmarking on ADD"):
-            inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
+    for epoch in range(1, num_epochs + 1):
+        model.train()
+        total_loss = 0.0
+
+        for batch in tqdm(test_loader, desc=f"Training Epoch {epoch}"):
+            inputs = batch["input_values"].to(DEVICE)
             labels = batch["labels"].to(DEVICE)
 
+            optimizer.zero_grad()
             outputs = model(inputs)
-            preds = torch.argmax(outputs.logits, dim=1)
+            loss = criterion(outputs.logits, labels)
+            loss.backward()
+            optimizer.step()
 
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
+            total_loss += loss.item()
 
+        avg_loss = total_loss / len(test_loader)
+        print(f"\n🧠 Epoch {epoch} Training Loss: {avg_loss:.4f}")
+
+        # === Evaluation ===
+        model.eval()
+        all_preds = []
+        all_labels = []
+
+        with torch.no_grad():
+            for batch in tqdm(test_loader, desc=f"Evaluating Epoch {epoch}"):
+                inputs = batch["input_values"].to(DEVICE)
+                labels = batch["labels"].to(DEVICE)
+
+                outputs = model(inputs)
+                preds = torch.argmax(outputs.logits, dim=1)
+
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+        acc = accuracy_score(all_labels, all_preds)
+        print(f"\n✅ Accuracy after Epoch {epoch}: {acc * 100:.2f}%")
+        print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
+
+    # Final results
+    print("\n🎉 Training complete. Final evaluation:")
+    acc = accuracy_score(all_labels, all_preds)
+    print(f"🏁 Final Accuracy: {acc * 100:.2f}%")
+    print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
     # === Evaluation Metrics ===
     acc = accuracy_score(all_labels, all_preds)
     print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
@@ -190,7 +223,7 @@ if __name__ == "__main__":
     cm = confusion_matrix(all_labels, all_preds)
     tn, fp, fn, tp = cm.ravel()
 
-    print("TN: {tn}, FP: {fp} \n FN: {FN}, TP: {tp}")
+    print(f"TN: {tn}, FP: {fp} \n FN: {FN}, TP: {tp}")
 
     # === Weights & Biases Logging ===
     login()
