@@ -337,8 +337,8 @@ def load_FOR_dataset(train_path, test_path, is_AST, samples, transform=None):
         train_dataset = FoRdatasetSimple(train_path, samples)
         val_dataset = FoRdatasetSimple(test_path, samples)
     else:
-        train_dataset = FoRdatasetPretrain(train_path, samples, transform=transform)
-        val_dataset = FoRdatasetPretrain(test_path, samples, transform=transform)
+        train_dataset = FoRdatasetSimplePretrain(train_path, samples, transform=transform)
+        val_dataset = FoRdatasetSimplePretrain(test_path, samples, transform=transform)
 
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True)
