@@ -170,6 +170,48 @@ class FoRdataset(ASVspoofDataset):
         print(f"[FoRdataset] Loaded {len(self.files)} total spectrograms from '{data_dir}'.")
 
 
+class FoRdatasetSimple(ASVspoofDataset):
+    def __init__(self, data_dir, max_per_class=None, transform=None):
+        """
+        :param data_dir: Root path to 'FoR/for-2sec/for-2seconds'
+        :param max_per_class: Optional int or dict of max samples per class
+        :param transform: Optional transform
+        """
+        self.data_dir = data_dir  # Should be 'FoR/for-2sec/for-2seconds'
+        self.transform = transform
+
+        self.class_map = {
+            "Real": 0,
+            "Fake": 1
+        }
+
+        if isinstance(max_per_class, int):
+            self.max_per_class = {class_name: max_per_class for class_name in self.class_map}
+        else:
+            self.max_per_class = max_per_class  # Can be None or a dict per class
+
+        self.files = []
+        for class_name, label in self.class_map.items():
+            class_folder = os.path.join(self.data_dir, class_name)
+            if not os.path.isdir(class_folder):
+                raise FileNotFoundError(f"Expected folder '{class_folder}' not found.")
+
+            class_files = [
+                os.path.join(class_folder, file)
+                for file in os.listdir(class_folder)
+                if file.endswith(".npy")
+            ]
+
+            max_count = self.max_per_class.get(class_name) if self.max_per_class else None
+            if max_count is not None:
+                random.shuffle(class_files)
+                class_files = class_files[:min(max_count, len(class_files))]
+
+            self.files.extend([(file_path, label) for file_path in class_files])
+
+        print(f"[FoRdataset] Loaded {len(self.files)} total spectrograms from '{data_dir}'.")
+
+
 class ASVspoofDatasetPretrain(ASVspoofDataset):
     def __getitem__(self, idx):
         file_path, label = self.files[idx]
@@ -211,3 +253,64 @@ class ADDdatasetPretrain(ADDdataset):
             spectrogram = self.transform(spectrogram)
 
         return spectrogram, label
+
+
+def load_ADD_dataset(path, samples, split=None):
+    train_dataset = ADDdataset(data_dir=path, max_per_class=samples)
+    if split is None:
+        loader = DataLoader(train_dataset, batch_size=samples, shuffle=True)
+        return loader, None, None
+
+    # Set validation split ratio
+    total_len = len(train_dataset)
+    val_len = int(total_len * split)
+    train_len = total_len - val_len
+
+    # Ensure reproducibility
+    generator = torch.Generator()
+    seed = generator.seed()
+
+    # Split
+    train_subset, val_subset = random_split(train_dataset, [train_len, val_len], generator=generator)
+
+    # DataLoaders
+    train_loader = DataLoader(train_subset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
+    return train_loader, val_loader, seed
+
+def load_ASV_dataset(path, samples, split=None):
+    train_dataset = ADDdataset(data_dir=path, max_per_class=samples)
+    if split is None:
+        loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+        return loader, None, None
+
+    # Set validation split ratio
+    total_len = len(train_dataset)
+    val_len = int(total_len * split)
+    train_len = total_len - val_len
+
+    # Ensure reproducibility
+    generator = torch.Generator()
+    seed = generator.seed()
+
+    # Split
+    train_subset, val_subset = random_split(train_dataset, [train_len, val_len], generator=generator)
+
+    # DataLoaders
+    train_loader = DataLoader(train_subset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
+    return train_loader, val_loader, seed
+
+def load_FOR_total(path, samples):
+    dataset = FoRdataset(path, samples)
+    loader = DataLoader(dataset, batch_size=samples, shuffle=True)
+    return loader
+
+def load_FOR_dataset(train_path, test_path, samples):
+
+    train_dataset = FoRdatasetSimple(train_path, samples)
+    val_dataset = FoRdatasetSimple(test_path, samples)
+
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True)
+    return train_loader, val_loader

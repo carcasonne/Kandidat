@@ -276,62 +276,63 @@ def benchmark(model, data_loader, flavor_text, is_AST):
     })
 
     wandb.finish()
+if __name__ == "__main__":
+    print("Yo its me from benchmark")
+    # === Load the ADD dataset ===
+    AST_model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
+        finetuned_model_path=AST_MODEL_CHECKPOINT,      # Your saved model
+        device="cuda"
+    )
 
-# === Load the ADD dataset ===
-AST_model = load_modified_ast_model(
-    base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
-    finetuned_model_path=AST_MODEL_CHECKPOINT,      # Your saved model
-    device="cuda"
-)
+    Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
+    Pretrain_model.to(DEVICE)
 
-Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
-Pretrain_model.to(DEVICE)
+    base_AST_model = load_base_ast_model()
+    base_AST_model.to(DEVICE)
 
-base_AST_model = load_base_ast_model()
-base_AST_model.to(DEVICE)
+    samples = {"bonafide": 100000, "fake":100000} # Load all
+    asv_samples = {"bonafide": 10000, "fake": 10000}
 
-samples = {"bonafide": 100000, "fake":100000} # Load all
-asv_samples = {"bonafide": 10000, "fake": 10000}
+    # AST Datasets
+    add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+    add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-# AST Datasets
-add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
-add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
+    for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
-for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
+    asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
-asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    #Pretrain datasets
 
-#Pretrain datasets
-
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.Normalize(mean=[0.485], std=[0.229]),
-])
-
-
-pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples, transform=transform)
-pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
-pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
-pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.Normalize(mean=[0.485], std=[0.229]),
+    ])
 
 
-run_name2 = f"Pretrain_benchmark_ADD"
-benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
+    pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples, transform=transform)
+    pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-run_name3 = f"Pretrain_benchmark_FoR"
-benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
+    pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
+    pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-run_name_1 = f"Sanity_check"
-benchmark(AST_model, asvs_test_loader, run_name_1, True)
 
-run_name_2 = f"Sanity_check_base"
-benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
+    run_name2 = f"Pretrain_benchmark_ADD"
+    benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
 
-run_name = f"AST_benchmark_ADD"
-benchmark(AST_model, add_test_loader, run_name, True)
+    run_name3 = f"Pretrain_benchmark_FoR"
+    benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
 
-run_name1 = f"AST_benchmark_FoR"
-benchmark(AST_model, for_test_loader, run_name1, True)
+    run_name_1 = f"Sanity_check"
+    benchmark(AST_model, asvs_test_loader, run_name_1, True)
+
+    run_name_2 = f"Sanity_check_base"
+    benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
+
+    run_name = f"AST_benchmark_ADD"
+    benchmark(AST_model, add_test_loader, run_name, True)
+
+    run_name1 = f"AST_benchmark_FoR"
+    benchmark(AST_model, for_test_loader, run_name1, True)
