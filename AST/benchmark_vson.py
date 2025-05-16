@@ -23,7 +23,7 @@ login()
 # === CONFIG ===
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MODEL_CHECKPOINT = "checkpoints/asvspoof-ast-model15_100K_20250506_054106"  # Replace with your actual saved path
-ADD_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms"  # Replace with your actual ADD dataset root
+ADD_DATASET_PATH = "/home/alsk/Kandidat/ADD/spectrograms"  # Replace with your actual ADD dataset root
 BATCH_SIZE = 16
 NUM_WORKERS = 4
 
