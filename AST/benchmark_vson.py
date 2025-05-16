@@ -170,8 +170,8 @@ if __name__ == "__main__":
     # sanity check
 
     from collections import Counter
-    labels = [sample['labels'] for sample in test_dataset]
-    print(Counter(labels))
+    label_counts = Counter(sample['labels'].item() for sample in test_dataset)
+    print(f"Label distribution:\n{label_counts}")
 
     num_epochs = 1
     criterion = torch.nn.CrossEntropyLoss()
