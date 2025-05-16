@@ -416,7 +416,7 @@ def ast_train_ADD_bench_attention():
     generate_enhanced_attention_maps(trained_model ,for_data, num_samples=10, flavor_text="AST_trn_ADD_on_FoR")
 
 def ast_train_FoR_bench_attention():
-    model = setup_ast_model(MODEL_NAME, 450, layers_to_freeze)
+    model = setup_ast_model(MODEL_NAME, 200, layers_to_freeze)
     print(f"Model setup complete")
 
     train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, False, samples)
