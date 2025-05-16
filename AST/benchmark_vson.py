@@ -149,12 +149,6 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     missing_keys, unexpected_keys = model.load_state_dict(finetuned_state_dict, strict=False)
     print(f"Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
 
-    # Freeze the first 10 layers to match your training setup
-    N = 10
-    for i in range(N):  # Layers 0 to 9
-        for param in model.audio_spectrogram_transformer.encoder.layer[i].parameters():
-            param.requires_grad = False
-
     # Move the model to the specified device
     model = model.to(device)
     print(f"Model successfully prepared with fine-tuned last layers")
@@ -195,6 +189,8 @@ if __name__ == "__main__":
 
     cm = confusion_matrix(all_labels, all_preds)
     tn, fp, fn, tp = cm.ravel()
+
+    print("TN: {tn}, FP: {fp} \n FN: {FN}, TP: {tp}")
 
     # === Weights & Biases Logging ===
     login()
