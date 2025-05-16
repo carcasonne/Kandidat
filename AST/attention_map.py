@@ -127,7 +127,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="at
             )
 
             # Get last layer attention
-            attn = outputs.attentions[-1]  # shape: (1, num_heads, seq_len, seq_len)
+            layer = 0
+            attn = outputs.attentions[layer]  # shape: (1, num_heads, seq_len, seq_len)
             attn = attn[0]  # (num_heads, seq_len, seq_len)
 
             # Average over all heads
@@ -180,36 +181,11 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="at
             fig.suptitle(f"Sample {i} - Label: {'bonafide' if label == 0 else 'spoof'}", fontsize=16)
 
             # Save the figure
-            save_path = os.path.join(save_dir, f"attention_visualization_{i}_label_{label}.png")
+            save_path = os.path.join(save_dir, f"attention_visualization_{i}_label_{label}_layer_{layer}.png")
             plt.tight_layout()
             plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1, dpi=150)
             plt.close()
 
-            # Save individual images for closer inspection
-            # Original spectrogram
-            plt.figure(figsize=(8, 6))
-            plt.imshow(spectrogram, origin='lower', aspect='auto', cmap='viridis')
-            plt.colorbar(shrink=0.8)
-            plt.title(f"Original Spectrogram - Sample {i}")
-            plt.axis("off")
-            plt.tight_layout()
-            plt.savefig(os.path.join(save_dir, f"orig_spec_{i}_label_{label}.png"),
-                        bbox_inches='tight', dpi=150)
-            plt.close()
-
-            # Attention map alone
-            plt.figure(figsize=(8, 6))
-            plt.imshow(attn_normalized, origin='lower', aspect='auto', cmap='jet')
-            plt.colorbar(shrink=0.8)
-            plt.title(f"Attention Map - Sample {i}")
-            plt.axis("off")
-            plt.tight_layout()
-            plt.savefig(os.path.join(save_dir, f"attn_map_{i}_label_{label}.png"),
-                        bbox_inches='tight', dpi=150)
-            plt.close()
-
-            # Also save the attention values as numpy array for further analysis
-            np.save(os.path.join(save_dir, f"attn_values_{i}_label_{label}.npy"), attn_resized)
 
     print(f"Enhanced visualizations saved to {save_dir}")
 
@@ -224,6 +200,5 @@ model = load_modified_ast_model(
     device="cuda"
 )
 dataset = ASVspoofDataset(data_dir=DATASET_PATH, max_per_class=samples)
-
 
 generate_enhanced_attention_maps(model ,dataset, num_samples=10)
