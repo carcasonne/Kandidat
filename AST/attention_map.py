@@ -127,7 +127,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="at
             )
 
             # Get last layer attention
-            attn = outputs.attentions[-1]  # shape: (1, num_heads, seq_len, seq_len)
+            attn = outputs.attentions[0]  # shape: (1, num_heads, seq_len, seq_len)
             attn = attn[0]  # (num_heads, seq_len, seq_len)
 
             # Average over all heads
@@ -224,6 +224,5 @@ model = load_modified_ast_model(
     device="cuda"
 )
 dataset = ASVspoofDataset(data_dir=DATASET_PATH, max_per_class=samples)
-
 
 generate_enhanced_attention_maps(model ,dataset, num_samples=10)
