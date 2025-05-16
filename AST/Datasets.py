@@ -240,6 +240,20 @@ class FoRdatasetPretrain(FoRdataset):
 
         return spectrogram, label
 
+class FoRdatasetSimplePretrain(FoRdatasetSimple):
+    def __getitem__(self, idx):
+        file_path, label = self.files[idx]
+
+        # Load precomputed log-mel spectrogram
+        spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
+        spectrogram = spectrogram.T
+        spectrogram = torch.from_numpy(spectrogram).unsqueeze(0)  # (1, 128, T)
+
+        if self.transform:
+            spectrogram = self.transform(spectrogram)
+
+        return spectrogram, label
+
 class ADDdatasetPretrain(ADDdataset):
     def __getitem__(self, idx):
         file_path, label = self.files[idx]
@@ -255,8 +269,12 @@ class ADDdatasetPretrain(ADDdataset):
         return spectrogram, label
 
 
-def load_ADD_dataset(path, samples, split=None):
-    train_dataset = ADDdataset(data_dir=path, max_per_class=samples)
+def load_ADD_dataset(path, samples, is_AST, split=None, transform=None):
+    if is_AST:
+        train_dataset = ADDdataset(data_dir=path, max_per_class=samples)
+    else :
+        train_dataset = ADDdatasetPretrain(data_dir=path, max_per_class=samples, transform=transform)
+
     if split is None:
         loader = DataLoader(train_dataset, batch_size=samples, shuffle=True)
         return loader, None, None
@@ -278,8 +296,12 @@ def load_ADD_dataset(path, samples, split=None):
     val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
     return train_loader, val_loader, seed
 
-def load_ASV_dataset(path, samples, split=None):
-    train_dataset = ADDdataset(data_dir=path, max_per_class=samples)
+def load_ASV_dataset(path, samples, is_AST, split=None, transform=None):
+    if is_AST:
+        train_dataset = ASVspoofDataset(data_dir=path, max_per_class=samples)
+    else :
+        train_dataset = ASVspoofDatasetPretrain(data_dir=path, max_per_class=samples, transform=transform)
+
     if split is None:
         loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
         return loader, None, None
@@ -301,16 +323,47 @@ def load_ASV_dataset(path, samples, split=None):
     val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
     return train_loader, val_loader, seed
 
-def load_FOR_total(path, samples):
-    dataset = FoRdataset(path, samples)
-    loader = DataLoader(dataset, batch_size=samples, shuffle=True)
+def load_FOR_total(path, samples, is_AST, transform=None):
+    if is_AST:
+        dataset = FoRdataset(path, samples)
+        loader = DataLoader(dataset, batch_size=samples, shuffle=True)
+    else:
+        dataset = FoRdatasetSimplePretrain(path, samples, transform=transform)
+        loader = DataLoader(dataset, batch_size=samples, shuffle=True)
     return loader
 
-def load_FOR_dataset(train_path, test_path, samples):
-
-    train_dataset = FoRdatasetSimple(train_path, samples)
-    val_dataset = FoRdatasetSimple(test_path, samples)
+def load_FOR_dataset(train_path, test_path, is_AST, samples, transform=None):
+    if is_AST:
+        train_dataset = FoRdatasetSimple(train_path, samples)
+        val_dataset = FoRdatasetSimple(test_path, samples)
+    else:
+        train_dataset = FoRdatasetPretrain(train_path, samples, transform=transform)
+        val_dataset = FoRdatasetPretrain(test_path, samples, transform=transform)
 
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True)
     return train_loader, val_loader
+
+class StretchMelCropTime:
+    def __init__(self, mel_target=224, time_target=224):
+        self.mel_target = mel_target
+        self.time_target = time_target
+
+    def __call__(self, spectrogram):
+        # spectrogram shape: (1, mel_bins=128, time=X)
+        _, mel_bins, time_steps = spectrogram.shape
+
+        # Step 1: Stretch mel bins (frequency axis) from 128 -> 224
+        spectrogram = F.interpolate(spectrogram, size=(self.mel_target, time_steps), mode='bilinear', align_corners=False)
+
+        # Step 2: Center crop or pad time axis to 224
+        if time_steps < self.time_target:
+            pad_total = self.time_target - time_steps
+            pad_left = pad_total // 2
+            pad_right = pad_total - pad_left
+            spectrogram = F.pad(spectrogram, (pad_left, pad_right))
+        elif time_steps > self.time_target:
+            start = (time_steps - self.time_target) // 2
+            spectrogram = spectrogram[:, :, start:start + self.time_target]
+
+        return spectrogram

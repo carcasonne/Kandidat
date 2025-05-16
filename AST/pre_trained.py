@@ -19,7 +19,6 @@ import wandb
 import plotly.graph_objects as go
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 
-from attention_map import calc_attention_maps
 from wandb_login import login
 
 import timm
