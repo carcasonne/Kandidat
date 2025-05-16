@@ -85,6 +85,7 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
         from safetensors.torch import load_file
 
         safetensors_path = os.path.join(finetuned_model_path, "model.safetensors")
+        print(f"safetensors path: {safetensors_path}")
         if os.path.exists(safetensors_path):
             print(f"Loading model from safetensors file: {safetensors_path}")
             finetuned_state_dict = load_file(safetensors_path)
@@ -157,49 +158,52 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     print(f"Model successfully prepared with fine-tuned last layers")
 
     return model
-# === Load the ADD dataset ===
-model = load_modified_ast_model(
-    base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
-    finetuned_model_path=MODEL_CHECKPOINT,      # Your saved model
-    device="cuda"
-)
 
-samples = {"bonafide": 100000, "fake":100000} # Load all
-test_dataset = ASVspoofDataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+if __name__ == "__main__":
+    # === Load the ADD dataset ===
+    model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
+        finetuned_model_path=MODEL_CHECKPOINT,      # Your saved model
+        device="cuda"
+    )
 
-# === Benchmarking Loop ===
-all_preds = []
-all_labels = []
+    samples = {"bonafide": 100000, "fake":100000} # Load all
+    test_dataset = ASVspoofDataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-with torch.no_grad():
-    for batch in tqdm(test_loader, desc="Benchmarking on ADD"):
-        inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
-        labels = batch["labels"].to(DEVICE)
+    # === Benchmarking Loop ===
+    all_preds = []
+    all_labels = []
 
-        outputs = model(inputs)
-        preds = torch.argmax(outputs.logits, dim=1)
+    with torch.no_grad():
+        for batch in tqdm(test_loader, desc="Benchmarking on ADD"):
+            inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
+            labels = batch["labels"].to(DEVICE)
 
-        all_preds.extend(preds.cpu().numpy())
-        all_labels.extend(labels.cpu().numpy())
+            outputs = model(inputs)
+            preds = torch.argmax(outputs.logits, dim=1)
 
-# === Evaluation Metrics ===
-acc = accuracy_score(all_labels, all_preds)
-print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
-print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
 
-cm = confusion_matrix(all_labels, all_preds)
-tn, fp, fn, tp = cm.ravel()
+    # === Evaluation Metrics ===
+    acc = accuracy_score(all_labels, all_preds)
+    print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
+    print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
 
-# === Weights & Biases Logging ===
-login()
-wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
+    cm = confusion_matrix(all_labels, all_preds)
+    tn, fp, fn, tp = cm.ravel()
 
-wandb.log({
-    "Accuracy": acc,
-    "True Positives": tp,
-    "True Negatives": tn,
-    "False Positives": fp,
-    "False Negatives": fn
-})
+    # === Weights & Biases Logging ===
+    login()
+    wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
+
+    wandb.log({
+        "Accuracy": acc,
+        "True Positives": tp,
+        "True Negatives": tn,
+        "False Positives": fp,
+        "False Negatives": fn
+    })
+
 
