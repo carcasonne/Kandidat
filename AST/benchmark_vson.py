@@ -16,6 +16,8 @@ from Datasets import ASVspoofDataset, ADDdataset
 from wandb_login import login
 import inspect
 
+login()
+
 # from your_dataset_module import ADDdataset
 
 # === CONFIG ===
@@ -193,7 +195,7 @@ if __name__ == "__main__":
     tn, fp, fn, tp = cm.ravel()
 
     # === Weights & Biases Logging ===
-    wandb.login()
+    login()
     wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
 
     wandb.log({
@@ -203,4 +205,5 @@ if __name__ == "__main__":
         "False Positives": fp,
         "False Negatives": fn
     })
+
 
