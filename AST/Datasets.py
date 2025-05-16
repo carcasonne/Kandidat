@@ -350,13 +350,24 @@ class StretchMelCropTime:
         self.time_target = time_target
 
     def __call__(self, spectrogram):
-        # spectrogram shape: (1, mel_bins=128, time=X)
-        _, mel_bins, time_steps = spectrogram.shape
+        # spectrogram shape: (1, 128, T)
+        C, mel_bins, time_steps = spectrogram.shape
 
-        # Step 1: Stretch mel bins (frequency axis) from 128 -> 224
-        spectrogram = F.interpolate(spectrogram, size=(self.mel_target, time_steps), mode='bilinear', align_corners=False)
+        # Add batch dimension to make shape (1, 1, 128, T)
+        spectrogram = spectrogram.unsqueeze(0)
 
-        # Step 2: Center crop or pad time axis to 224
+        # Resize mel bins (128 -> 224)
+        spectrogram = F.interpolate(
+            spectrogram,
+            size=(self.mel_target, time_steps),
+            mode='bilinear',
+            align_corners=False
+        )
+
+        # Remove batch dimension => shape (1, 224, T)
+        spectrogram = spectrogram.squeeze(0)
+
+        # Now crop or pad time dimension to 224
         if time_steps < self.time_target:
             pad_total = self.time_target - time_steps
             pad_left = pad_total // 2
