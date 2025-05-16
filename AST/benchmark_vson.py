@@ -55,8 +55,8 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     # Apply architecture modifications
     model.config.max_length = 300
     model.config.num_labels = 2
-    model.config.id2label = {0: "bonafide", 1: "spoof"}
-    model.config.label2id = {"bonafide": 0, "spoof": 1}
+    model.config.id2label = {0: "bonafide", 1: "fake"}
+    model.config.label2id = {"bonafide": 0, "fake": 1}
 
     # Modify the classifier for 2 classes (same as in your training code)
     if hasattr(model.classifier, 'dense'):
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     # === Evaluation Metrics ===
     acc = accuracy_score(all_labels, all_preds)
     print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
-    print(classification_report(all_labels, all_preds, target_names=["bonafide", "spoof"]))
+    print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
 
     cm = confusion_matrix(all_labels, all_preds)
     tn, fp, fn, tp = cm.ravel()
