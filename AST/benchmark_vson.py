@@ -59,10 +59,8 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     model.config.label2id = {"bonafide": 0, "fake": 1}
 
     # Modify the classifier for 2 classes (same as in your training code)
-    if hasattr(model.classifier, 'dense'):
-        model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)
-        if hasattr(model.classifier, 'out_proj'):
-            model.classifier.out_proj = nn.Linear(2, 2)
+    model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)
+    model.classifier.out_proj = nn.Linear(2, 2)
 
     # Interpolate positional embeddings
     desired_max_length = 350
@@ -146,7 +144,7 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     print(f"Selectively loading {len(last_layers_dict)} weights for the last layers and classifier")
 
     # Load the filtered state dict
-    missing_keys, unexpected_keys = model.load_state_dict(finetuned_state_dict, strict=False)
+    missing_keys, unexpected_keys = model.load_state_dict(finetuned_state_dict, strict=True)
     print(f"Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
 
     # Move the model to the specified device
@@ -167,61 +165,25 @@ if __name__ == "__main__":
     test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    # sanity check
+    # === Benchmarking Loop ===
+    all_preds = []
+    all_labels = []
 
-    from collections import Counter
-    label_counts = Counter(sample['labels'].item() for sample in test_dataset)
-    print(f"Label distribution:\n{label_counts}")
-
-    num_epochs = 1
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-
-    for epoch in range(1, num_epochs + 1):
-        model.train()
-        total_loss = 0.0
-
-        for batch in tqdm(test_loader, desc=f"Training Epoch {epoch}"):
-            inputs = batch["input_values"].to(DEVICE)
+    with torch.no_grad():
+        for batch in tqdm(test_loader, desc="Benchmarking on ADD"):
+            inputs = batch["input_values"].to(DEVICE)  # shape: (B, T, 128)
             labels = batch["labels"].to(DEVICE)
 
-            optimizer.zero_grad()
             outputs = model(inputs)
-            loss = criterion(outputs.logits, labels)
-            loss.backward()
-            optimizer.step()
+            preds = torch.argmax(outputs.logits, dim=1)
 
-            total_loss += loss.item()
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
 
-        avg_loss = total_loss / len(test_loader)
-        print(f"\n🧠 Epoch {epoch} Training Loss: {avg_loss:.4f}")
-
-        # === Evaluation ===
-        model.eval()
-        all_preds = []
-        all_labels = []
-
-        with torch.no_grad():
-            for batch in tqdm(test_loader, desc=f"Evaluating Epoch {epoch}"):
-                inputs = batch["input_values"].to(DEVICE)
-                labels = batch["labels"].to(DEVICE)
-
-                outputs = model(inputs)
-                preds = torch.argmax(outputs.logits, dim=1)
-
-                all_preds.extend(preds.cpu().numpy())
-                all_labels.extend(labels.cpu().numpy())
-
-        acc = accuracy_score(all_labels, all_preds)
-        print(f"\n✅ Accuracy after Epoch {epoch}: {acc * 100:.2f}%")
-        print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
-
-    # Final results
-    print("\n🎉 Training complete. Final evaluation:")
-    acc = accuracy_score(all_labels, all_preds)
-    print(f"🏁 Final Accuracy: {acc * 100:.2f}%")
-    print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
     # === Evaluation Metrics ===
+    acc = accuracy_score(all_labels, all_preds)
+    print(f"\n✅ Benchmark Accuracy on ADD: {acc * 100:.2f}%")
+    print(classification_report(all_labels, all_preds, target_names=["bonafide", "fake"]))
 
     cm = confusion_matrix(all_labels, all_preds)
     tn, fp, fn, tp = cm.ravel()
