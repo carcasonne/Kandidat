@@ -149,7 +149,7 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
 
     # Move the model to the specified device
     model = model.to(device)
-    print(f"Model successfully prepared with fine-tuned last layers")
+    print("Model successfully prepared with fine-tuned last layers")
 
     return model
 
@@ -161,8 +161,10 @@ if __name__ == "__main__":
         device="cuda"
     )
 
-    samples = {"bonafide": 100000, "fake":100000} # Load all
-    test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
+    samples = {"bonafide": 1000, "fake":1000} # Load all
+    #test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
+    test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=samples)
+    #test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     # === Benchmarking Loop ===
