@@ -170,7 +170,7 @@ if __name__ == "__main__":
     )
 
     samples = {"bonafide": 100000, "fake":100000} # Load all
-    test_dataset = FoRdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+    test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     # === Benchmarking Loop ===
