@@ -342,7 +342,7 @@ def load_FOR_dataset(train_path, test_path, is_AST, samples, transform=None):
 
     train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True)
-    return train_loader, val_loader
+    return train_loader, val_loader, None
 
 class StretchMelCropTime:
     def __init__(self, mel_target=224, time_target=224):
