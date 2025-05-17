@@ -415,11 +415,11 @@ def ast_train_ADD_bench_attention():
     print(f"Model completed training")
     print(f"Benchmark AST trained on ADD, on ASV")
     asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, is_AST=True, split=None, transform=None, embedding_size=embedding_size)
-    #benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
+    benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
 
     print(f"Benchmark AST Trained on ADD, on FoR")
     for_data = load_FOR_total(FOR_DATASET_PATH, samples_for, is_AST=True, embedding_size=embedding_size)
-    #benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
+    benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
 
     print(f"Generating Attention_maps")
     generate_enhanced_attention_maps(trained_model ,asv_data, num_samples=10, flavor_text="AST_trn_ADD_on_ASV")
@@ -429,11 +429,11 @@ def ast_train_ADD_bench_attention():
 
 def ast_train_FoR_bench_attention(vson: bool):
     if vson:
-        ADD_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms/ADD"
-        FOR_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
-        FOR_DATASET_PATH_TRAINING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Training"
-        FOR_DATASET_PATH_TESTING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
-        ASVS_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms"
+        ADD_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/ADD"
+        FOR_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
+        FOR_DATASET_PATH_TRAINING = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Training"
+        FOR_DATASET_PATH_TESTING = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
+        ASVS_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms"
 
     embedding_size = 200
     model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
