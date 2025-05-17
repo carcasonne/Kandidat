@@ -7,7 +7,6 @@ from tqdm import tqdm
 import cv2
 
 from Datasets import ASVspoofDataset
-from benchmark_vson import load_modified_ast_model
 
 
 def generate_attention_maps(model, dataset, num_samples=5, save_dir="attention-maps", device="cuda"):
@@ -101,7 +100,7 @@ def generate_attention_maps(model, dataset, num_samples=5, save_dir="attention-m
             plt.close()
 
 
-def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="attention-maps-enhanced", device="cuda"):
+def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text="", save_dir="attention-maps-enhanced", device="cuda"):
     """
     Generate visualizations with three panels:
     1. Original spectrogram
@@ -127,8 +126,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="at
             )
 
             # Get last layer attention
-            layer = 0
-            attn = outputs.attentions[layer]  # shape: (1, num_heads, seq_len, seq_len)
+            attn = outputs.attentions[-1]  # shape: (1, num_heads, seq_len, seq_len)
             attn = attn[0]  # (num_heads, seq_len, seq_len)
 
             # Average over all heads
@@ -181,24 +179,10 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, save_dir="at
             fig.suptitle(f"Sample {i} - Label: {'bonafide' if label == 0 else 'spoof'}", fontsize=16)
 
             # Save the figure
-            save_path = os.path.join(save_dir, f"attention_visualization_{i}_label_{label}_layer_{layer}.png")
+            save_path = os.path.join(save_dir, f"attention_visualization_{flavor_text}_{i}_label_{label}.png")
             plt.tight_layout()
             plt.savefig(save_path, bbox_inches='tight', pad_inches=0.1, dpi=150)
             plt.close()
 
 
     print(f"Enhanced visualizations saved to {save_dir}")
-
-#Load model
-path = r"checkpoints/asvspoof-ast-model15_100K_20250506_054106"
-DATASET_PATH = r"spectrograms"
-samples = {"bonafide": 10, "fake":10} # Load all
-
-model = load_modified_ast_model(
-    base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
-    finetuned_model_path=path,      # Your saved model
-    device="cuda"
-)
-dataset = ASVspoofDataset(data_dir=DATASET_PATH, max_per_class=samples)
-
-generate_enhanced_attention_maps(model ,dataset, num_samples=10)
