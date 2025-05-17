@@ -423,7 +423,15 @@ def ast_train_ADD_bench_attention():
     generate_enhanced_attention_maps(trained_model ,train_load, num_samples=10, flavor_text="AST_trn_ADD_on_ADD")
     generate_enhanced_attention_maps(trained_model ,for_data, num_samples=10, flavor_text="AST_trn_ADD_on_FoR")
 
-def ast_train_FoR_bench_attention():
+
+def ast_train_FoR_bench_attention(vson: bool):
+    if vson:
+        ADD_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms/ADD"
+        FOR_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
+        FOR_DATASET_PATH_TRAINING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Training"
+        FOR_DATASET_PATH_TESTING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
+        ASVS_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms"
+
     embedding_size = 200
     model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
