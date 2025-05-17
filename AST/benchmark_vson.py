@@ -161,11 +161,12 @@ if __name__ == "__main__":
         device="cuda"
     )
 
-    samples = {"bonafide": 1000, "fake":1000} # Load all
-    #test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
-    test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=samples)
-    #test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    samples = {"bonafide": 1000, "fake":1000}
+    sample_for = {"Real": 1000, "Fake":1000}
+    test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
+    # test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=samples)
+    # test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # === Benchmarking Loop ===
     all_preds = []
@@ -193,15 +194,15 @@ if __name__ == "__main__":
     print(f"TN: {tn}, FP: {fp} \n FN: {fn}, TP: {tp}")
 
     # === Weights & Biases Logging ===
-    login()
-    wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
+    # login()
+    # wandb.init(project="ADD Benchmark", entity="Holdet_thesis")
 
-    wandb.log({
-        "Accuracy": acc,
-        "True Positives": tp,
-        "True Negatives": tn,
-        "False Positives": fp,
-        "False Negatives": fn
-    })
+    # wandb.log({
+    #     "Accuracy": acc,
+    #     "True Positives": tp,
+    #     "True Negatives": tn,
+    #     "False Positives": fp,
+    #     "False Negatives": fn
+    # })
 
 
