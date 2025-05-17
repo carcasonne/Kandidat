@@ -435,6 +435,8 @@ def ast_train_FoR_bench_attention(vson: bool):
         FOR_DATASET_PATH_TESTING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
         ASVS_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms"
 
+    EPOCHS = 20
+
     embedding_size = 200
     model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
