@@ -31,7 +31,10 @@ from attention_map import generate_enhanced_attention_maps
 from wandb_login import login
 from benchmark import benchmark
 
-samples = {"bonafide": 100000, "fake":100000}
+samples_add = {"genuine": 50000, "fake":50000}
+samples_for = {"Real": 100000, "Fake":100000}
+samples_asv = {"bonafide": 50000, "fake":50000}
+
 EPOCHS = 1
 TRAIN_TEST_SPLIT = 0.2
 layers_to_freeze = 10
@@ -401,7 +404,7 @@ def ast_train_ADD_bench_attention():
     model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
 
-    train_load, val_load, seed = load_ADD_dataset(ADD_DATASET_PATH, samples, True, TRAIN_TEST_SPLIT, embedding_size=embedding_size)
+    train_load, val_load, seed = load_ADD_dataset(ADD_DATASET_PATH, samples_add, True, TRAIN_TEST_SPLIT, embedding_size=embedding_size)
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
@@ -411,11 +414,11 @@ def ast_train_ADD_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark AST trained on ADD, on ASV")
-    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, is_AST=True, split=None, transform=None, embedding_size=embedding_size)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, is_AST=True, split=None, transform=None, embedding_size=embedding_size)
     #benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
 
     print(f"Benchmark AST Trained on ADD, on FoR")
-    for_data = load_FOR_total(FOR_DATASET_PATH, samples, is_AST=True, embedding_size=embedding_size)
+    for_data = load_FOR_total(FOR_DATASET_PATH, samples_for, is_AST=True, embedding_size=embedding_size)
     #benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
 
     print(f"Generating Attention_maps")
@@ -428,7 +431,7 @@ def ast_train_FoR_bench_attention():
     model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
 
-    train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, True, samples, None, embedding_size)
+    train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, True, samples_for, None, embedding_size)
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
@@ -438,11 +441,11 @@ def ast_train_FoR_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark AST trained on FoR, on ASV")
-    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, True, split=None, embedding_size=embedding_size)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, True, split=None, embedding_size=embedding_size)
     benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on FoR, on ASV", is_AST=True)
 
     print(f"Benchmark AST Trained on FoR, on ADD")
-    add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples, is_AST=True, split=None, embedding_size=embedding_size)
+    add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, is_AST=True, split=None, embedding_size=embedding_size)
     benchmark(trained_model, add_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
 
     print(f"Generating Attention_maps")
@@ -459,7 +462,7 @@ def pre_train_ADD_bench_attention():
         StretchMelCropTime(224, 224),
         transforms.Normalize(mean=[0.485], std=[0.229]),
     ])
-    train_load, val_load, seed = load_ADD_dataset(ADD_DATASET_PATH, samples, False, TRAIN_TEST_SPLIT, transform)
+    train_load, val_load, seed = load_ADD_dataset(ADD_DATASET_PATH, samples_add, False, TRAIN_TEST_SPLIT, transform)
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
 
@@ -469,11 +472,11 @@ def pre_train_ADD_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark Pre-trained VIT trained on ADD, on ASV")
-    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, False, split=None, transform=transform)
     benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ADD, on ASV", is_AST=False)
 
     print(f"Benchmark Pre-trained VIT trained on ADD, on FoR")
-    for_data = load_FOR_total(FOR_DATASET_PATH, samples, False, transform)
+    for_data = load_FOR_total(FOR_DATASET_PATH, samples_for, False, transform)
     benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ADD, on FoR", is_AST=False)
 
     # doest work with pretrained vit
@@ -492,7 +495,7 @@ def pre_train_FoR_bench_attention():
         StretchMelCropTime(224, 224),
         transforms.Normalize(mean=[0.485], std=[0.229]),
     ])
-    train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, False, samples, transform)
+    train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, False, samples_for, transform)
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
 
@@ -502,11 +505,11 @@ def pre_train_FoR_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark Pre-trained VIT trained on FoR, on ASV")
-    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, False, split=None, transform=transform)
     benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on FoR, on ASV", is_AST=False)
 
     print(f"Benchmark Pre-trained VIT trained on FoR, on ADD")
-    for_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples, False, split=None, transform=transform)
+    for_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, False, split=None, transform=transform)
     benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on FoR, on ADD", is_AST=False)
 
     # doesnt work with pretrained vit
