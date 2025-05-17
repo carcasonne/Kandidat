@@ -186,7 +186,7 @@ def visualize(embeddings, labels, domains):
         "label": labels.numpy(),
         "domain": domains.cpu().numpy()
     })
-
+    df = df.sample(n=min(len(df), 2000), random_state=42)
     # Plot by spoof/real
     plt.figure(figsize=(10, 5))
     plt.subplot(1, 2, 1)
