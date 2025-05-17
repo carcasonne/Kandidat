@@ -201,13 +201,16 @@ def visualize(embeddings, labels, domains):
     plt.tight_layout()
     plt.savefig("embedding_visualization.png")
 
+print("Inside script")
 MODEL_CHECKPOINT = "checkpoints/asvspoof-ast-model15_100K_20250506_054106"
 
+print("Loading model")
 model = load_modified_ast_model(
     base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
     finetuned_model_path=MODEL_CHECKPOINT,      # Your saved model
     device="cuda"
 )
+print("Done loading model")
 vson = True
 if vson:
     ADD_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/ADD"
@@ -223,10 +226,13 @@ else:
     FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
     ASVS_DATASET_PATH = r"spectrograms"
 
-
+print("Loading asv dataset")
 asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, is_AST=True, split=None, transform=None, embedding_size=300)
+print("Loading ADD dataset")
 add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, True, TRAIN_TEST_SPLIT, embedding_size=300)
+print("Loading FoR dataset")
 for_data, _, _ = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, True, samples_for, None, 300)
 
+print("Extracting embeddings")
 embeddings, labels, domains = extract_embeddings_from_multiple_dataloaders(model, [asv_data, add_data, for_data], device='cuda')
 visualize(embeddings, labels, domains)
