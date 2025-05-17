@@ -249,6 +249,10 @@ def benchmark(model, data_loader, flavor_text, is_AST):
             inputs, labels = get_input_and_labels(is_AST, batch)
 
             outputs = model(inputs)
+
+            if hasattr(outputs, "logits"):
+                outputs = outputs.logits
+
             preds = torch.argmax(outputs, dim=1)
 
             all_preds.extend(preds.cpu().numpy())
