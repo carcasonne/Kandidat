@@ -444,7 +444,7 @@ def ast_train_FoR_bench_attention(vson: bool):
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
     print(f"Starting to train")
-    flavor_text = "ADD_data"
+    flavor_text = "FoR_data"
     trained_model = train_ast(model, train_load, val_load, cri, opti, EPOCHS, flavor_text, seed)
 
     print(f"Model completed training")
