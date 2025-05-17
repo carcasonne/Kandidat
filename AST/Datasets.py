@@ -22,10 +22,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 
 class ASVspoofDataset(Dataset):
-    def __init__(self, data_dir, max_per_class=None, transform=None):
+    def __init__(self, data_dir, max_per_class=None, transform=None, target_frames=None):
         self.data_dir = data_dir
         self.spec_dir = os.path.join(data_dir, "ASVSpoof")
         self.transform = transform
+        self.target_frames = target_frames
 
         self.class_map = {
             "bonafide": 0,
@@ -69,20 +70,18 @@ class ASVspoofDataset(Dataset):
         # Ensure correct shape: (300, 128)
         # 300 since this is the average
         """"""
-        target_frames = 300
         num_frames, num_mel_bins = spectrogram.shape
 
-        if num_frames < target_frames:
+        if num_frames < self.target_frames:
             # Pad with zeros at the end
-            pad_amount = target_frames - num_frames
+            pad_amount = self.target_frames - num_frames
             spectrogram = np.pad(spectrogram, ((0, pad_amount), (0, 0)), mode='constant')
-        elif num_frames > target_frames:
+        elif num_frames > self.target_frames:
             # Center crop
-            start = (num_frames - target_frames) // 2
-            spectrogram = spectrogram[start:start + target_frames, :]
+            start = (num_frames - self.target_frames) // 2
+            spectrogram = spectrogram[start:start + self.target_frames, :]
 
-
-        spectrogram = torch.tensor(spectrogram)  # shape: (300, 128)
+        spectrogram = torch.tensor(spectrogram)
 
         return {
             "input_values": spectrogram,
@@ -90,10 +89,10 @@ class ASVspoofDataset(Dataset):
         }
 
 class ADDdataset(ASVspoofDataset):
-    def __init__(self, data_dir, max_per_class=None, transform=None):
+    def __init__(self, data_dir, max_per_class=None, transform=None, target_frames=None):
         self.data_dir = data_dir  # Root dir containing 'genuine/' and 'fake/'
         self.transform = transform
-
+        self.target_frames = target_frames
         self.class_map = {
             "genuine": 0,
             "fake": 1
@@ -126,7 +125,7 @@ class ADDdataset(ASVspoofDataset):
 
 
 class FoRdataset(ASVspoofDataset):
-    def __init__(self, data_dir, max_per_class=None, transform=None):
+    def __init__(self, data_dir, max_per_class=None, transform=None, target_frames=None):
         """
         :param data_dir: Root path to 'FoR/for-2sec/for-2seconds'
         :param max_per_class: Optional int or dict of max samples per class
@@ -134,7 +133,7 @@ class FoRdataset(ASVspoofDataset):
         """
         self.data_dir = data_dir  # Should be 'FoR/for-2sec/for-2seconds'
         self.transform = transform
-
+        self.target_frames = target_frames
         self.class_map = {
             "Real": 0,
             "Fake": 1
@@ -171,7 +170,7 @@ class FoRdataset(ASVspoofDataset):
 
 
 class FoRdatasetSimple(ASVspoofDataset):
-    def __init__(self, data_dir, max_per_class=None, transform=None):
+    def __init__(self, data_dir, max_per_class=None, transform=None, target_frames=None):
         """
         :param data_dir: Root path to 'FoR/for-2sec/for-2seconds'
         :param max_per_class: Optional int or dict of max samples per class
@@ -179,6 +178,7 @@ class FoRdatasetSimple(ASVspoofDataset):
         """
         self.data_dir = data_dir  # Should be 'FoR/for-2sec/for-2seconds'
         self.transform = transform
+        self.target_frames = target_frames
 
         self.class_map = {
             "Real": 0,
@@ -269,14 +269,14 @@ class ADDdatasetPretrain(ADDdataset):
         return spectrogram, label
 
 
-def load_ADD_dataset(path, samples, is_AST, split=None, transform=None):
+def load_ADD_dataset(path, samples, is_AST, split=None, transform=None, embedding_size=None):
     if is_AST:
-        train_dataset = ADDdataset(data_dir=path, max_per_class=samples)
+        train_dataset = ADDdataset(data_dir=path, max_per_class=samples, target_frames=embedding_size)
     else :
         train_dataset = ADDdatasetPretrain(data_dir=path, max_per_class=samples, transform=transform)
 
     if split is None:
-        loader = DataLoader(train_dataset, batch_size=samples, shuffle=True)
+        loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
         return loader, None, None
 
     # Set validation split ratio
@@ -296,9 +296,9 @@ def load_ADD_dataset(path, samples, is_AST, split=None, transform=None):
     val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
     return train_loader, val_loader, seed
 
-def load_ASV_dataset(path, samples, is_AST, split=None, transform=None):
+def load_ASV_dataset(path, samples, is_AST, split=None, transform=None, embedding_size=None):
     if is_AST:
-        train_dataset = ASVspoofDataset(data_dir=path, max_per_class=samples)
+        train_dataset = ASVspoofDataset(data_dir=path, max_per_class=samples, target_frames=embedding_size)
     else :
         train_dataset = ASVspoofDatasetPretrain(data_dir=path, max_per_class=samples, transform=transform)
 
@@ -323,19 +323,19 @@ def load_ASV_dataset(path, samples, is_AST, split=None, transform=None):
     val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
     return train_loader, val_loader, seed
 
-def load_FOR_total(path, samples, is_AST, transform=None):
+def load_FOR_total(path, samples, is_AST, transform=None, embedding_size=None):
     if is_AST:
-        dataset = FoRdataset(path, samples)
-        loader = DataLoader(dataset, batch_size=samples, shuffle=True)
+        dataset = FoRdataset(path, samples, target_frames=embedding_size)
+        loader = DataLoader(dataset, batch_size=16, shuffle=True)
     else:
-        dataset = FoRdatasetSimplePretrain(path, samples, transform=transform)
-        loader = DataLoader(dataset, batch_size=samples, shuffle=True)
+        dataset = FoRdatasetPretrain(path, samples, transform=transform)
+        loader = DataLoader(dataset, batch_size=16, shuffle=True)
     return loader
 
-def load_FOR_dataset(train_path, test_path, is_AST, samples, transform=None):
+def load_FOR_dataset(train_path, test_path, is_AST, samples, transform=None, target_size=None):
     if is_AST:
-        train_dataset = FoRdatasetSimple(train_path, samples)
-        val_dataset = FoRdatasetSimple(test_path, samples)
+        train_dataset = FoRdatasetSimple(train_path, samples, target_frames=target_size)
+        val_dataset = FoRdatasetSimple(test_path, samples, target_frames=target_size)
     else:
         train_dataset = FoRdatasetSimplePretrain(train_path, samples, transform=transform)
         val_dataset = FoRdatasetSimplePretrain(test_path, samples, transform=transform)

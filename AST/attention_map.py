@@ -1,4 +1,6 @@
 import os
+from collections import defaultdict
+
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -112,10 +114,18 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
     model.to(device)
     model.eval()
 
+    # Ensure all classes are considered before stopping
+    class_samples = defaultdict(list)
+    for sample in dataset.dataset:
+        label = sample["labels"].item()
+        if len(class_samples[label]) < num_samples:
+            class_samples[label].append(sample)
+
+    selected_samples = class_samples[0] + class_samples[1]
+
     with torch.no_grad():
-        for i in tqdm(range(min(num_samples, len(dataset))), desc="Generating attention maps"):
-            sample = dataset[i]
-            input_tensor = sample["input_values"].unsqueeze(0).to(device)  # shape: (1, 300, 128)
+        for i, sample in enumerate(tqdm(selected_samples, desc="Generating attention maps")):
+            input_tensor = sample["input_values"].unsqueeze(0).to(device)
             label = sample["labels"].item()
 
             # Forward pass with attention
@@ -176,7 +186,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             axes[2].axis("off")
 
             # Main title for the entire figure
-            fig.suptitle(f"Sample {i} - Label: {'bonafide' if label == 0 else 'spoof'}", fontsize=16)
+            fig.suptitle(f"Sample {i} - Label: {'bonafide' if label == 0 else 'deepfake'}", fontsize=16)
 
             # Save the figure
             save_path = os.path.join(save_dir, f"attention_visualization_{flavor_text}_{i}_label_{label}.png")

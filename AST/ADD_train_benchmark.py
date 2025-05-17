@@ -1,4 +1,5 @@
 import os
+from collections import Counter
 from datetime import datetime
 from os.path import split
 
@@ -31,7 +32,7 @@ from wandb_login import login
 from benchmark import benchmark
 
 samples = {"bonafide": 100000, "fake":100000}
-EPOCHS = 20
+EPOCHS = 1
 TRAIN_TEST_SPLIT = 0.2
 layers_to_freeze = 10
 
@@ -82,7 +83,12 @@ def setup_ast_model(model_name, embedding_size, frozen_layers, device='cuda'):
     model.classifier.out_proj = nn.Linear(2, 2)  # Adjust projection layer
 
     # Interpolate positional embeddings
-    desired_max_length = embedding_size
+    desired_max_length = 0
+    if embedding_size == 200:
+        desired_max_length = 230
+    elif embedding_size == 450:
+        desired_max_length = 530
+
     position_embeddings = model.audio_spectrogram_transformer.embeddings.position_embeddings  # shape: (1, old_len, dim)
     old_len = position_embeddings.shape[1]
     if old_len != desired_max_length:
@@ -97,6 +103,7 @@ def setup_ast_model(model_name, embedding_size, frozen_layers, device='cuda'):
 
         model.audio_spectrogram_transformer.embeddings.position_embeddings = nn.Parameter(interpolated_pos_emb)
 
+    print("Final position embedding shape:", model.audio_spectrogram_transformer.embeddings.position_embeddings.shape)
     model.audio_spectrogram_transformer.embeddings.position_embeddings.requires_grad = False
 
     for i in range(frozen_layers):  # Layers 0 to 9
@@ -390,10 +397,11 @@ def train_pretrain(model, train_loader, val_loader, criterion, optimizer, num_ep
     return model
 
 def ast_train_ADD_bench_attention():
-    model = setup_ast_model(MODEL_NAME, 450, layers_to_freeze)
+    embedding_size = 450
+    model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
 
-    train_load, val_load, seed = load_ADD_dataset(ADD_DATASET_PATH, samples, True, TRAIN_TEST_SPLIT)
+    train_load, val_load, seed = load_ADD_dataset(ADD_DATASET_PATH, samples, True, TRAIN_TEST_SPLIT, embedding_size=embedding_size)
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
@@ -403,12 +411,12 @@ def ast_train_ADD_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark AST trained on ADD, on ASV")
-    asv_data = load_ASV_dataset(ASVS_DATASET_PATH, samples, split=None)
-    benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, is_AST=True, split=None, transform=None, embedding_size=embedding_size)
+    #benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
 
     print(f"Benchmark AST Trained on ADD, on FoR")
-    for_data = load_FOR_total(FOR_DATASET_PATH, samples)
-    benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
+    for_data = load_FOR_total(FOR_DATASET_PATH, samples, is_AST=True, embedding_size=embedding_size)
+    #benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
 
     print(f"Generating Attention_maps")
     generate_enhanced_attention_maps(trained_model ,asv_data, num_samples=10, flavor_text="AST_trn_ADD_on_ASV")
@@ -416,10 +424,11 @@ def ast_train_ADD_bench_attention():
     generate_enhanced_attention_maps(trained_model ,for_data, num_samples=10, flavor_text="AST_trn_ADD_on_FoR")
 
 def ast_train_FoR_bench_attention():
-    model = setup_ast_model(MODEL_NAME, 200, layers_to_freeze)
+    embedding_size = 200
+    model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
 
-    train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, False, samples)
+    train_load, val_load, seed = load_FOR_dataset(FOR_DATASET_PATH_TRAINING, FOR_DATASET_PATH_TESTING, True, samples, None, embedding_size)
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
@@ -429,17 +438,17 @@ def ast_train_FoR_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark AST trained on FoR, on ASV")
-    asv_data = load_ASV_dataset(ASVS_DATASET_PATH, samples, split=None)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, True, split=None, embedding_size=embedding_size)
     benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on FoR, on ASV", is_AST=True)
 
     print(f"Benchmark AST Trained on FoR, on ADD")
-    for_data = load_ADD_dataset(FOR_DATASET_PATH, samples, is_AST=True, split=None)
-    benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
+    add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples, is_AST=True, split=None, embedding_size=embedding_size)
+    benchmark(trained_model, add_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
 
     print(f"Generating Attention_maps")
-    generate_enhanced_attention_maps(trained_model ,asv_data, num_samples=10, flavor_text="AST_trn_ADD_on_ASV")
-    generate_enhanced_attention_maps(trained_model ,train_load, num_samples=10, flavor_text="AST_trn_ADD_on_ADD")
-    generate_enhanced_attention_maps(trained_model ,for_data, num_samples=10, flavor_text="AST_trn_ADD_on_FoR")
+    generate_enhanced_attention_maps(trained_model ,asv_data, num_samples=10, flavor_text="AST_trn_FoR_on_ASV")
+    generate_enhanced_attention_maps(trained_model ,train_load, num_samples=10, flavor_text="AST_trn_FoR_on_FoR")
+    generate_enhanced_attention_maps(trained_model ,add_data, num_samples=10, flavor_text="AST_trn_FoR_on_ADD")
 
 def pre_train_ADD_bench_attention():
     model = setup_pretrain_model()
@@ -460,17 +469,18 @@ def pre_train_ADD_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark Pre-trained VIT trained on ADD, on ASV")
-    asv_data = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
     benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ADD, on ASV", is_AST=False)
 
     print(f"Benchmark Pre-trained VIT trained on ADD, on FoR")
     for_data = load_FOR_total(FOR_DATASET_PATH, samples, False, transform)
     benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ADD, on FoR", is_AST=False)
 
-    print(f"Generating Attention_maps")
-    generate_enhanced_attention_maps(trained_model, asv_data, num_samples=10)
-    generate_enhanced_attention_maps(trained_model, train_load, num_samples=10)
-    generate_enhanced_attention_maps(trained_model, for_data, num_samples=10)
+    # doest work with pretrained vit
+    #print(f"Generating Attention_maps")
+    #generate_enhanced_attention_maps(trained_model, asv_data, num_samples=10)
+    #generate_enhanced_attention_maps(trained_model, train_load, num_samples=10)
+    #generate_enhanced_attention_maps(trained_model, for_data, num_samples=10)
 
 
 def pre_train_FoR_bench_attention():
@@ -492,14 +502,15 @@ def pre_train_FoR_bench_attention():
 
     print(f"Model completed training")
     print(f"Benchmark Pre-trained VIT trained on FoR, on ASV")
-    asv_data = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
     benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on FoR, on ASV", is_AST=False)
 
     print(f"Benchmark Pre-trained VIT trained on FoR, on ADD")
-    for_data = load_ADD_dataset(FOR_DATASET_PATH, samples, False, split=None, transform=transform)
+    for_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples, False, split=None, transform=transform)
     benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on FoR, on ADD", is_AST=False)
 
-    print(f"Generating Attention_maps")
-    generate_enhanced_attention_maps(trained_model, asv_data, num_samples=10)
-    generate_enhanced_attention_maps(trained_model, train_load, num_samples=10)
-    generate_enhanced_attention_maps(trained_model, for_data, num_samples=10)
+    # doesnt work with pretrained vit
+    #print(f"Generating Attention_maps")
+    #generate_enhanced_attention_maps(trained_model, asv_data, num_samples=10)
+    #generate_enhanced_attention_maps(trained_model, train_load, num_samples=10)
+    #generate_enhanced_attention_maps(trained_model, for_data, num_samples=10)
