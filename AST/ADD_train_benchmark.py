@@ -35,7 +35,7 @@ samples_add = {"genuine": 50000, "fake":50000}
 samples_for = {"Real": 100000, "Fake":100000}
 samples_asv = {"bonafide": 50000, "fake":50000}
 
-EPOCHS = 1
+EPOCHS = 20
 TRAIN_TEST_SPLIT = 0.2
 layers_to_freeze = 10
 
@@ -415,11 +415,11 @@ def ast_train_ADD_bench_attention():
     print(f"Model completed training")
     print(f"Benchmark AST trained on ADD, on ASV")
     asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, is_AST=True, split=None, transform=None, embedding_size=embedding_size)
-    #benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
+    benchmark(trained_model, asv_data, flavor_text="Benchmark AST trained on ADD, on ASV", is_AST=True)
 
     print(f"Benchmark AST Trained on ADD, on FoR")
     for_data = load_FOR_total(FOR_DATASET_PATH, samples_for, is_AST=True, embedding_size=embedding_size)
-    #benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
+    benchmark(trained_model, for_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
 
     print(f"Generating Attention_maps")
     generate_enhanced_attention_maps(trained_model ,asv_data, num_samples=10, flavor_text="AST_trn_ADD_on_ASV")
@@ -429,11 +429,11 @@ def ast_train_ADD_bench_attention():
 
 def ast_train_FoR_bench_attention(vson: bool):
     if vson:
-        ADD_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms/ADD"
-        FOR_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
-        FOR_DATASET_PATH_TRAINING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Training"
-        FOR_DATASET_PATH_TESTING = r"/home/alsk/Kanidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
-        ASVS_DATASET_PATH = r"/home/alsk/Kanidat/AST/spectrograms"
+        ADD_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/ADD"
+        FOR_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
+        FOR_DATASET_PATH_TRAINING = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Training"
+        FOR_DATASET_PATH_TESTING = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
+        ASVS_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms"
 
     EPOCHS = 20
 
@@ -446,7 +446,7 @@ def ast_train_FoR_bench_attention(vson: bool):
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
     print(f"Starting to train")
-    flavor_text = "ADD_data"
+    flavor_text = "FoR_data"
     trained_model = train_ast(model, train_load, val_load, cri, opti, EPOCHS, flavor_text, seed)
 
     print(f"Model completed training")
