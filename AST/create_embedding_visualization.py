@@ -208,6 +208,21 @@ model = load_modified_ast_model(
     finetuned_model_path=MODEL_CHECKPOINT,      # Your saved model
     device="cuda"
 )
+vson = True
+if vson:
+    ADD_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/ADD"
+    FOR_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
+    FOR_DATASET_PATH_TRAINING = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Training"
+    FOR_DATASET_PATH_TESTING = r"/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds/Testing"
+    ASVS_DATASET_PATH = r"/home/alsk/Kandidat/AST/spectrograms"
+else:
+    # Define dataset path
+    ADD_DATASET_PATH = r"spectrograms/ADD"
+    FOR_DATASET_PATH = r"spectrograms/FoR/for-2sec/for-2seconds"
+    FOR_DATASET_PATH_TRAINING = r"spectrograms/FoR/for-2sec/for-2seconds/Training"
+    FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
+    ASVS_DATASET_PATH = r"spectrograms"
+
 
 asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, is_AST=True, split=None, transform=None, embedding_size=300)
 add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, True, TRAIN_TEST_SPLIT, embedding_size=300)
