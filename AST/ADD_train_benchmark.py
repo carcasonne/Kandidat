@@ -35,7 +35,7 @@ samples_add = {"genuine": 50000, "fake":50000}
 samples_for = {"Real": 100000, "Fake":100000}
 samples_asv = {"bonafide": 50000, "fake":50000}
 
-EPOCHS = 1
+EPOCHS = 20
 TRAIN_TEST_SPLIT = 0.2
 layers_to_freeze = 10
 
