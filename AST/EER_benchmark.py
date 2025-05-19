@@ -342,6 +342,10 @@ def benchmark_with_probabilities(model, data_loader, flavor_text, is_AST):
 if __name__ == "__main__":
     print("Starting benchmark with probability output")
     
+    embedding_size_ast = 300
+    embedding_size_for = 200
+    embedding_size_add = 450
+
     # Load only the AST model
     AST_model = load_modified_ast_model(
         base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
@@ -360,7 +364,8 @@ if __name__ == "__main__":
         path=ASVS_DATASET_PATH, 
         samples=asv_samples, 
         is_AST=True, 
-        split=None
+        split=None,
+        embedding_size=embedding_size_ast
     )
     
     # ADD dataset
@@ -368,14 +373,16 @@ if __name__ == "__main__":
         path=ADD_DATASET_PATH, 
         samples=samples, 
         is_AST=True, 
-        split=None
+        split=None,
+        embedding_size=embedding_size_add
     )
     
     # FOR dataset - using the total dataset function since we want all data
     for_test_loader = load_FOR_total(
         path=FOR_DATASET_PATH, 
         samples=samples, 
-        is_AST=True
+        is_AST=True,
+        embedding_size=embedding_size_for
     )
 
     # Run benchmarks for the AST model only
