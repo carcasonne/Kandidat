@@ -442,7 +442,7 @@ def ast_train_asv(vson: bool):
         FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
         ASVS_DATASET_PATH = r"spectrograms"
 
-    EPOCHS = 1
+    EPOCHS = 20
     embedding_size = 300
     model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
     print(f"Model setup complete")
@@ -452,17 +452,17 @@ def ast_train_asv(vson: bool):
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
 
     print(f"Starting to train")
-    flavor_text = "ASV_data_100K"
+    flavor_text = "ASV_100K_Norm"
     trained_model = train_ast(model, train_load, val_load, cri, opti, EPOCHS, flavor_text, seed)
-
     print(f"Model completed training")
+
     print(f"Benchmark AST trained on ASV, on FoR")
     for_data = load_FOR_total(FOR_DATASET_PATH, samples_for, is_AST=True, transform=None, embedding_size=embedding_size)
-    benchmark(trained_model, for_data, flavor_text="Benchmark AST trained on ASV, on FoR", is_AST=True)
+    benchmark(trained_model, for_data, flavor_text="Benchmark AST trained on ASV, on FoR_100K_Norm", is_AST=True)
 
     print(f"Benchmark AST Trained on ASV, on ADD")
     add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, is_AST=True, split=None, embedding_size=embedding_size)
-    benchmark(trained_model, add_data, flavor_text="Benchmark AST Trained on ADD, on FoR", is_AST=True)
+    benchmark(trained_model, add_data, flavor_text="Benchmark AST Trained on ASV, on ADD_100K_Norm", is_AST=True)
 
 
 def ast_train_FoR_bench_attention(vson: bool):

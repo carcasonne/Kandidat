@@ -9,6 +9,7 @@ import torchaudio
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import transforms
 from transformers import AutoFeatureExtractor, ASTForAudioClassification, ASTConfig, ASTModel
 from tqdm import tqdm
 from sklearn.metrics import confusion_matrix
@@ -82,6 +83,14 @@ class ASVspoofDataset(Dataset):
             spectrogram = spectrogram[start:start + self.target_frames, :]
 
         spectrogram = torch.tensor(spectrogram)
+        spectrogram = spectrogram.unsqueeze(0)
+
+        transform = transforms.Compose([
+            transforms.Normalize(mean=[0.485], std=[0.229]),
+        ])
+
+        spectrogram = transform(spectrogram)
+        spectrogram = spectrogram.squeeze(0)
 
         return {
             "input_values": spectrogram,
