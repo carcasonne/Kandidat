@@ -33,7 +33,7 @@ FOR_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2secon
 ASVS_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms"
 BATCH_SIZE = 16
 
-def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
+def load_modified_ast_model(base_model_name, finetuned_model_path, embedding_size, device=None):
     """
     Load a model where only the last two layers are replaced with fine-tuned weights.
 
@@ -55,20 +55,28 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
     # Start with the original pretrained model
     model = ASTForAudioClassification.from_pretrained(base_model_name)
 
+
+    # Interpolate positional embeddings
+    desired_max_length = 0
+    if embedding_size == 200:
+        desired_max_length = 230
+    elif embedding_size == 450:
+        desired_max_length = 530
+    elif embedding_size == 300:
+        desired_max_length = 350
+
+
     # Apply architecture modifications
-    model.config.max_length = 300
+    model.config.max_length = embedding_size
     model.config.num_labels = 2
     model.config.id2label = {0: "bonafide", 1: "spoof"}
     model.config.label2id = {"bonafide": 0, "spoof": 1}
 
     # Modify the classifier for 2 classes (same as in your training code)
-    if hasattr(model.classifier, 'dense'):
-        model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)
-        if hasattr(model.classifier, 'out_proj'):
-            model.classifier.out_proj = nn.Linear(2, 2)
+    model.classifier.dense = nn.Linear(model.classifier.dense.in_features, 2)
+    model.classifier.out_proj = nn.Linear(2, 2)
 
     # Interpolate positional embeddings
-    desired_max_length = 350
     position_embeddings = model.audio_spectrogram_transformer.embeddings.position_embeddings
     old_len = position_embeddings.shape[1]
     if old_len != desired_max_length:
@@ -134,21 +142,8 @@ def load_modified_ast_model(base_model_name, finetuned_model_path, device=None):
             print(f"Failed to load model directly: {e2}")
             raise e2
 
-    # If we got here, we have a state dict to filter
-    # Filter the state dict to only include the last two transformer layers and classifier
-    last_layers_dict = {}
-    for key, value in finetuned_state_dict.items():
-        # Include only the last two transformer layers (layers 10 and 11)
-        if "encoder.layer.10." in key or "encoder.layer.11." in key:
-            last_layers_dict[key] = value
-        # Include classifier weights
-        elif "classifier" in key:
-            last_layers_dict[key] = value
-
-    print(f"Selectively loading {len(last_layers_dict)} weights for the last layers and classifier")
-
     # Load the filtered state dict
-    missing_keys, unexpected_keys = model.load_state_dict(last_layers_dict, strict=False)
+    missing_keys, unexpected_keys = model.load_state_dict(finetuned_state_dict, strict=False)
     print(f"Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
 
     # Freeze the first 10 layers to match your training setup
@@ -342,17 +337,11 @@ def benchmark_with_probabilities(model, data_loader, flavor_text, is_AST):
 if __name__ == "__main__":
     print("Starting benchmark with probability output")
     
-    embedding_size_ast = 300
+    embedding_size_asv = 300
     embedding_size_for = 200
     embedding_size_add = 450
 
-    # Load only the AST model
-    AST_model = load_modified_ast_model(
-        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
-        finetuned_model_path=AST_MODEL_CHECKPOINT,
-        device="cuda"
-    )
-    AST_model.to(DEVICE)
+    print("Loading datasets")
 
     # Define sample limits
     samples = {"bonafide": 100000, "fake": 100000}  # Load all
@@ -365,7 +354,7 @@ if __name__ == "__main__":
         samples=asv_samples, 
         is_AST=True, 
         split=None,
-        embedding_size=embedding_size_ast
+        embedding_size=embedding_size_asv
     )
     
     # ADD dataset
@@ -385,12 +374,38 @@ if __name__ == "__main__":
         embedding_size=embedding_size_for
     )
 
+    print("Loading models")
+
+    AST_model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
+        finetuned_model_path=AST_MODEL_CHECKPOINT,
+        embedding_size=embedding_size_asv,
+        device="cuda"
+    )
+    AST_model.to(DEVICE)
+
     # Run benchmarks for the AST model only
     run_name_1 = f"AST_benchmark_ASVspoof"
     benchmark_with_probabilities(AST_model, asvs_test_loader, run_name_1, True)
 
+    AST_model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
+        finetuned_model_path=AST_MODEL_CHECKPOINT,
+        embedding_size=embedding_size_add,
+        device="cuda"
+    )
+    AST_model.to(DEVICE)
+
     run_name_2 = f"AST_benchmark_ADD"
     benchmark_with_probabilities(AST_model, add_test_loader, run_name_2, True)
+
+    AST_model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
+        finetuned_model_path=AST_MODEL_CHECKPOINT,
+        embedding_size=embedding_size_for,
+        device="cuda"
+    )
+    AST_model.to(DEVICE)
 
     run_name_3 = f"AST_benchmark_FoR"
     benchmark_with_probabilities(AST_model, for_test_loader, run_name_3, True)
