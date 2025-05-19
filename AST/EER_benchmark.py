@@ -21,7 +21,7 @@ import torch.nn.functional as F
 from transformers import ASTForAudioClassification
 from torchvision import datasets, transforms
 
-from Datasets import ASVspoofDataset, ADDdataset, FoRdataset, ASVspoofDatasetPretrain, ADDdatasetPretrain, FoRdatasetPretrain
+from Datasets import ASVspoofDataset, ADDdataset, FoRdataset, ASVspoofDatasetPretrain, ADDdatasetPretrain, FoRdatasetPretrain, load_ADD_dataset, load_ASV_dataset, load_FOR_total
 from wandb_login import login
 import inspect
 
@@ -341,44 +341,49 @@ def benchmark_with_probabilities(model, data_loader, flavor_text, is_AST):
 
 if __name__ == "__main__":
     print("Starting benchmark with probability output")
-    # Load models - this part remains unchanged
+    
+    # Load only the AST model
     AST_model = load_modified_ast_model(
         base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
         finetuned_model_path=AST_MODEL_CHECKPOINT,
         device="cuda"
     )
+    AST_model.to(DEVICE)
 
-    # Pretrain_model = load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT)
-    # Pretrain_model.to(DEVICE)
-
-    base_AST_model = load_base_ast_model()
-    base_AST_model.to(DEVICE)
-
-    samples = {"bonafide": 100000, "fake":100000} # Load all
+    # Define sample limits
+    samples = {"bonafide": 100000, "fake": 100000}  # Load all
     asv_samples = {"bonafide": 10000, "fake": 10000}
 
-    # Dataset loading - unchanged
-    # AST Datasets
-    #add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
-    #add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    # Load datasets using the functions from Datasets.py
+    # ASVspoof dataset
+    asvs_test_loader, _, _ = load_ASV_dataset(
+        path=ASVS_DATASET_PATH, 
+        samples=asv_samples, 
+        is_AST=True, 
+        split=None
+    )
+    
+    # ADD dataset
+    add_test_loader, _, _ = load_ADD_dataset(
+        path=ADD_DATASET_PATH, 
+        samples=samples, 
+        is_AST=True, 
+        split=None
+    )
+    
+    # FOR dataset - using the total dataset function since we want all data
+    for_test_loader = load_FOR_total(
+        path=FOR_DATASET_PATH, 
+        samples=samples, 
+        is_AST=True
+    )
 
-    #for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
-    #for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
-    asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
-    asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
-    # Pretrain datasets
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.Normalize(mean=[0.485], std=[0.229]),
-    ])
-
-    # pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples, transform=transform)
-    # pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
-    # pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
-    # pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
-    run_name_1 = "Sanity_check"
+    # Run benchmarks for the AST model only
+    run_name_1 = f"AST_benchmark_ASVspoof"
     benchmark_with_probabilities(AST_model, asvs_test_loader, run_name_1, True)
+
+    run_name_2 = f"AST_benchmark_ADD"
+    benchmark_with_probabilities(AST_model, add_test_loader, run_name_2, True)
+
+    run_name_3 = f"AST_benchmark_FoR"
+    benchmark_with_probabilities(AST_model, for_test_loader, run_name_3, True)
