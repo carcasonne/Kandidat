@@ -345,13 +345,14 @@ if __name__ == "__main__":
     asv_samples = {"bonafide": 10000, "fake": 10000}
 
     # AST Datasets
-    add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples)
+    ast_target_frames = 350 # why 350 you ask? i dont fucking know, i answer
+    add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples, target_frames=ast_target_frames)
     add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples)
+    for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples, target_frames=ast_target_frames)
     for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples)
+    asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples, target_frames=ast_target_frames)
     asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     #Pretrain datasets
@@ -368,13 +369,6 @@ if __name__ == "__main__":
     pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
     pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-
-    run_name2 = f"Pretrain_benchmark_ADD"
-    benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
-
-    run_name3 = f"Pretrain_benchmark_FoR"
-    benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
-
     run_name_1 = f"Sanity_check"
     benchmark(AST_model, asvs_test_loader, run_name_1, True)
 
@@ -386,3 +380,9 @@ if __name__ == "__main__":
 
     run_name1 = f"AST_benchmark_FoR"
     benchmark(AST_model, for_test_loader, run_name1, True)
+
+    run_name2 = f"Pretrain_benchmark_ADD"
+    benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
+
+    run_name3 = f"Pretrain_benchmark_FoR"
+    benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
