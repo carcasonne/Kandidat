@@ -345,7 +345,7 @@ if __name__ == "__main__":
     asv_samples = {"bonafide": 10000, "fake": 10000}
 
     # AST Datasets
-    ast_target_frames = 350 # why 350 you ask? i dont fucking know, i answer
+    ast_target_frames = 300 # why 300 you ask? i dont fucking know, i answer
     add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples, target_frames=ast_target_frames)
     add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
