@@ -302,7 +302,7 @@ def benchmark(model, data_loader, flavor_text, is_AST):
     # === Weights & Biases Logging ===
     wandb.login()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
-    wandb.init(project="Benchmark_v2", entity="Holdet_thesis", name=flavor_text + "_" + date)
+    wandb.init(project="Benchmark_v3", entity="Holdet_thesis", name=flavor_text + "_" + date)
 
     wandb.log({
         "Accuracy": acc,
@@ -347,13 +347,13 @@ if __name__ == "__main__":
     # AST Datasets
     ast_target_frames = 300 # why 300 you ask? i dont fucking know, i answer
     add_test_dataset = ADDdataset(data_dir=ADD_DATASET_PATH, max_per_class=samples, target_frames=ast_target_frames)
-    add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    add_test_loader = DataLoader(add_test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     for_test_dataset = FoRdataset(data_dir=FOR_DATASET_PATH, max_per_class=samples, target_frames=ast_target_frames)
-    for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    for_test_loader = DataLoader(for_test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     asvs_test_dataset = ASVspoofDataset(data_dir=ASVS_DATASET_PATH, max_per_class=asv_samples, target_frames=ast_target_frames)
-    asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    asvs_test_loader = DataLoader(asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     #Pretrain datasets
 
@@ -364,10 +364,10 @@ if __name__ == "__main__":
 
 
     pre_add_test_dataset = ADDdatasetPretrain(data_dir=ADD_DATASET_PATH, max_per_class=samples, transform=transform)
-    pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    pre_add_test_loader = DataLoader(pre_add_test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     pre_for_test_dataset = FoRdatasetPretrain(data_dir=FOR_DATASET_PATH, max_per_class=samples, transform=transform)
-    pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    pre_for_test_loader = DataLoader(pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     run_name_1 = f"Sanity_check"
     benchmark(AST_model, asvs_test_loader, run_name_1, True)
