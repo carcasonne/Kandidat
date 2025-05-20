@@ -14,7 +14,7 @@ import modules.models as models
 
 # === CONFIG ===
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-AST_MODEL_CHECKPOINT = "/home/alsk/Kandidat/AST/checkpoints/asvspoof-ast-model15_100K_20250506_054106"  # Replace with your actual saved path
+AST_MODEL_CHECKPOINT = "/home/alsk/Kandidat/AST/checkpoints/asvspoof-ast-model5_100K_20250505_002314"  # Replace with your actual saved path
 PRETRAIN_MODEL_CHECKPOINT = (
     "/home/alsk/Kandidat/AST/checkpoints/asvspoof-pretrain-model19_20250507_081555"
 )
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     base_AST_model = models.load_base_ast_model(device=DEVICE)
 
     samples = {"bonafide": 100000, "fake": 100000}
-    asv_samples = {"bonafide": 100000, "fake": 100000}
+    asv_samples = {"bonafide": 1000000, "fake": 1000000}
 
     # AST Datasets
     ast_target_frames = 300  # why 300 you ask? i dont fucking know, i answer
