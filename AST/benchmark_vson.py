@@ -85,19 +85,19 @@ if __name__ == "__main__":
     )
 
     run_name_1 = "Sanity_check"
-    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True)
+    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE)
 
     # run_name_2 = "Sanity_check_base"
-    # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
+    # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE)
 
     # run_name = "AST_benchmark_ADD"
-    # benchmark.benchmark(AST_model, add_test_loader, run_name, True)
+    # benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE)
 
     # run_name1 = "AST_benchmark_FoR"
-    # benchmark.benchmark(AST_model, for_test_loader, run_name1, True)
+    # benchmark.benchmark(AST_model, for_test_loader, run_name1, True, DEVICE)
 
     # run_name2 = "Pretrain_benchmark_ADD"
-    # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
+    # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE)
 
     # run_name3 = "Pretrain_benchmark_FoR"
-    # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
+    # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE)
