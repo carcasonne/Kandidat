@@ -35,7 +35,7 @@ if __name__ == "__main__":
     base_AST_model = models.load_base_ast_model(device=DEVICE)
 
     samples = {"bonafide": 100000, "fake": 100000}
-    asv_samples = {"bonafide": 1000000, "fake": 1000000}
+    asv_samples = {"bonafide": 100000, "fake": 100000}
 
     # AST Datasets
     ast_target_frames = 300  # why 300 you ask? i dont fucking know, i answer
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     )
 
     run_name_1 = "Sanity_check"
-    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, "ASV-Benchmark-Sanity-Check")
+    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, "ASV-Benchmark-Sanity-Check-v2")
 
     # run_name_2 = "Sanity_check_base"
     # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE)
