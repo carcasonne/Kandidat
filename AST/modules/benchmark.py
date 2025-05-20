@@ -14,7 +14,7 @@ import modules.utils as utils
 import modules.metrics as metrics
 
 
-def benchmark(model, data_loader, flavor_text, is_AST):
+def benchmark(model, data_loader, flavor_text, is_AST, device):
     # === Benchmarking Loop ===
     all_preds = []
     all_labels = []
@@ -23,7 +23,7 @@ def benchmark(model, data_loader, flavor_text, is_AST):
 
     with torch.no_grad():
         for batch in tqdm(data_loader, desc="Benchmarking"):
-            inputs, labels = utils.get_input_and_labels(is_AST, batch)
+            inputs, labels = utils.get_input_and_labels(is_AST, batch, device)
 
             outputs = model(inputs)
 
