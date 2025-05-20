@@ -35,7 +35,7 @@ if __name__ == "__main__":
     base_AST_model = models.load_base_ast_model(device=DEVICE)
 
     samples = {"bonafide": 100000, "fake": 100000}
-    asv_samples = {"bonafide": 10000, "fake": 10000}
+    asv_samples = {"bonafide": 1000000, "fake": 1000000}
 
     # AST Datasets
     ast_target_frames = 300  # why 300 you ask? i dont fucking know, i answer
