@@ -22,6 +22,7 @@ ADD_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms/ADD"  # Replace with yo
 FOR_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
 ASVS_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms"
 BATCH_SIZE = 16
+WANDB_PROJECT_NAME = "AST100k-5Epochs-CrossEvaluation"
 
 if __name__ == "__main__":
     print("Yo its me from benchmark")
@@ -84,17 +85,19 @@ if __name__ == "__main__":
         pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
 
+    run_name1 = "AST_benchmark_FoR"
+    benchmark.benchmark(AST_model, for_test_loader, run_name1, True, DEVICE, WANDB_PROJECT_NAME)
+    
+    run_name = "AST_benchmark_ADD"
+    benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE, WANDB_PROJECT_NAME)
+    
     run_name_1 = "Sanity_check"
-    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, "ASV-Benchmark-Sanity-Check-v2")
+    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
 
-    # run_name_2 = "Sanity_check_base"
-    # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE)
+    run_name_2 = "Sanity_check_base"
+    benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE, WANDB_PROJECT_NAME)
 
-    # run_name = "AST_benchmark_ADD"
-    # benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE)
 
-    # run_name1 = "AST_benchmark_FoR"
-    # benchmark.benchmark(AST_model, for_test_loader, run_name1, True, DEVICE)
 
     # run_name2 = "Pretrain_benchmark_ADD"
     # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE)
