@@ -83,14 +83,11 @@ class ASVspoofDataset(Dataset):
             spectrogram = spectrogram[start:start + self.target_frames, :]
 
         spectrogram = torch.tensor(spectrogram)
-        spectrogram = spectrogram.unsqueeze(0)
 
-        transform = transforms.Compose([
-            transforms.Normalize(mean=[0.485], std=[0.229]),
-        ])
-
-        spectrogram = transform(spectrogram)
-        spectrogram = spectrogram.squeeze(0)
+        if self.transform:
+            spectrogram = spectrogram.unsqueeze(0)
+            spectrogram = self.transform(spectrogram)
+            spectrogram = spectrogram.squeeze(0)
 
         return {
             "input_values": spectrogram,
