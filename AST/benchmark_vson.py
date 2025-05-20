@@ -1,4 +1,3 @@
-
 import torch
 from Datasets import (
     ADDdataset,
@@ -12,7 +11,6 @@ from torchvision import transforms
 
 import modules.benchmark as benchmark
 import modules.models as models
-
 
 # === CONFIG ===
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -89,17 +87,17 @@ if __name__ == "__main__":
     run_name_1 = "Sanity_check"
     benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True)
 
-    run_name_2 = "Sanity_check_base"
-    benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
+    # run_name_2 = "Sanity_check_base"
+    # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True)
 
-    run_name = "AST_benchmark_ADD"
-    benchmark.benchmark(AST_model, add_test_loader, run_name, True)
+    # run_name = "AST_benchmark_ADD"
+    # benchmark.benchmark(AST_model, add_test_loader, run_name, True)
 
-    run_name1 = "AST_benchmark_FoR"
-    benchmark.benchmark(AST_model, for_test_loader, run_name1, True)
+    # run_name1 = "AST_benchmark_FoR"
+    # benchmark.benchmark(AST_model, for_test_loader, run_name1, True)
 
-    run_name2 = "Pretrain_benchmark_ADD"
-    benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
+    # run_name2 = "Pretrain_benchmark_ADD"
+    # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False)
 
-    run_name3 = "Pretrain_benchmark_FoR"
-    benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
+    # run_name3 = "Pretrain_benchmark_FoR"
+    # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False)
