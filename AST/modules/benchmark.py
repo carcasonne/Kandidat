@@ -14,7 +14,7 @@ import modules.utils as utils
 import modules.metrics as metrics
 
 
-def benchmark(model, data_loader, flavor_text, is_AST, device):
+def benchmark(model, data_loader, flavor_text, is_AST, device, project_name):
     # === Benchmarking Loop ===
     all_preds = []
     all_labels = []
@@ -63,7 +63,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device):
     wandb.login()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     wandb.init(
-        project="Benchmark_v3", entity="Holdet_thesis", name=flavor_text + "_" + date
+        project=project_name, entity="Holdet_thesis", name=flavor_text + "_" + date
     )
 
     wandb.log(

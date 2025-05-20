@@ -85,7 +85,7 @@ if __name__ == "__main__":
     )
 
     run_name_1 = "Sanity_check"
-    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE)
+    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, "ASV-Benchmark-Sanity-Check")
 
     # run_name_2 = "Sanity_check_base"
     # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE)
