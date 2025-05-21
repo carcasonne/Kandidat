@@ -122,7 +122,7 @@ def setup_ast_model(model_name, embedding_size, frozen_layers, device='cuda'):
 
 def train_ast(model, train_loader, val_loader, criterion, optimizer, num_epochs, flavor_text, seed, embedding_size, transform=None):
     login()
-    run_id = "69421"
+    run_id = "1337"
     train_run = wandb.init(project="Kandidat-AST", entity="Holdet_thesis", id=run_id, resume="allow")
     # Training Loop
     for epoch in range(num_epochs):
@@ -244,18 +244,22 @@ def train_ast(model, train_loader, val_loader, criterion, optimizer, num_epochs,
             "Val F1 Score": val_f1,
             "Val Spider Plot": val_fig
         })
-        if (epoch % 5 == 0 and epoch != 0) or epoch == num_epochs - 1:
+        if (epoch % 2 == 0 and epoch != 0) or epoch == num_epochs - 1:
             train_run.finish()
 
             print(f"benchmarking")
 
             print(f"Benchmark AST trained on ASV, on FoR")
             for_data = load_FOR_total(FOR_DATASET_PATH, samples_for, is_AST=True, transform=transform, embedding_size=embedding_size)
-            benchmark(model, for_data, flavor_text=f"Benchmark AST trained on ASV, on FoR_{epoch}_100K_Norm", is_AST=True)
+            benchmark(model, for_data, flavor_text=f"Benchmark AST trained on ALL, on FoR_{epoch}_10K_Norm", is_AST=True)
 
             print(f"Benchmark AST Trained on ASV, on ADD")
             add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, is_AST=True, split=None, transform=transform, embedding_size=embedding_size)
-            benchmark(model, add_data, flavor_text=f"Benchmark AST Trained on ASV, on ADD_{epoch}_100K_Norm", is_AST=True)
+            benchmark(model, add_data, flavor_text=f"Benchmark AST Trained on ALL, on ADD_{epoch}_10K_Norm", is_AST=True)
+
+            print(f"Benchmark AST Trained on ASV, on ASV")
+            asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, is_AST=True, split=None, transform=transform, embedding_size=embedding_size)
+            benchmark(model, asv_data, flavor_text=f"Benchmark AST Trained on ALL, on ASV_{epoch}_10K_Norm", is_AST=True)
 
             train_run = wandb.init(project="Kandidat-AST", entity="Holdet_thesis", id=run_id, resume='allow')
 
@@ -415,6 +419,37 @@ def train_pretrain(model, train_loader, val_loader, criterion, optimizer, num_ep
               f"Val Precision = {val_precision:.4f}, Val Recall = {val_recall:.4f}, Val F1 = {val_f1:.4f}")
     wandb.finish()
     return model
+
+
+def ast_train_all_datasets():
+    samples = {'ADD': 10000, 'ASVSpoof': 10000, 'FoR': 10000}
+    epoch = 5
+    val_split = 0.2
+    ADD_DATASET_PATH = r"spectrograms/ADD"
+    FOR_DATASET_PATH = r"spectrograms/FoR/for-2sec/for-2seconds"
+    FOR_DATASET_PATH_TRAINING = r"spectrograms/FoR/for-2sec/for-2seconds/Training"
+    FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
+    ASVS_DATASET_PATH = r"spectrograms"
+
+    embedding_size = 300
+    transform = transforms.Compose([
+        transforms.Normalize(mean=[0.485], std=[0.229]),
+    ])
+
+    model = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
+    print(f"Model setup complete")
+
+    # Needs the spectrogram path to folder
+    train_load, val_load, seed = load_total_dataset(ASVS_DATASET_PATH, samples, val_split, transform, embedding_size)
+    cri = nn.CrossEntropyLoss()
+    opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5)
+
+    print(f"Starting to train")
+    #flavor_text = "ASV_100K_Norm"
+    flavor_text = "TESTING"
+
+    trained_model = train_ast(model, train_load, val_load, cri, opti, epoch, flavor_text, seed, embedding_size, transform)
+    print(f"Model completed training")
 
 def ast_train_ADD_bench_attention():
     embedding_size = 450

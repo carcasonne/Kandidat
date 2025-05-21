@@ -1,5 +1,7 @@
 import os
 from datetime import datetime
+from glob import glob
+
 from torch.utils.data import random_split
 import numpy as np
 import librosa
@@ -93,6 +95,48 @@ class ASVspoofDataset(Dataset):
             "input_values": spectrogram,
             "labels": torch.tensor(label, dtype=torch.long)
         }
+
+
+class TotalDataset(ASVspoofDataset):
+    def __init__(self, root_dir, samples_per_dataset, transform=None, target_frames=None):
+        """
+        Args:
+            root_dir (str): Root directory containing the datasets (e.g., 'spectrograms/')
+            samples_per_dataset (dict): Dict specifying number of samples from each dataset
+                Example: {'ADD': 100, 'ASVSpoof': 200, 'FoR': 150}
+        """
+        self.files = []  # List of (filepath, label)
+        self.transform = transform
+        self.target_frames = target_frames
+
+        for dataset_name, total_samples in samples_per_dataset.items():
+            dataset_path = os.path.join(root_dir, dataset_name)
+            fake_files = []
+            real_files = []
+
+            # Collect files depending on dataset structure
+            if dataset_name == 'ADD':
+                fake_files = glob(os.path.join(dataset_path, 'fake', '*.npy'))
+                real_files = glob(os.path.join(dataset_path, 'genuine', '*.npy'))
+
+            elif dataset_name == 'ASVSpoof':
+                fake_files = glob(os.path.join(dataset_path, 'fake', '*.npy'))
+                real_files = glob(os.path.join(dataset_path, 'bonafide', '*.npy'))
+
+            elif dataset_name == 'FoR':
+                for split in ['Training', 'Testing']:
+                    fake_files += glob(os.path.join(dataset_path, 'for-2sec', 'for-2seconds', split, 'Fake', '*.npy'))
+                    real_files += glob(os.path.join(dataset_path, 'for-2sec', 'for-2seconds', split, 'Real', '*.npy'))
+
+            # Balance samples
+            num_each = total_samples // 2
+            sampled_fake = random.sample(fake_files, min(num_each, len(fake_files)))
+            sampled_real = random.sample(real_files, min(num_each, len(real_files)))
+
+            self.files.extend([(path, 1) for path in sampled_fake])
+            self.files.extend([(path, 0) for path in sampled_real])
+
+        random.shuffle(self.files)
 
 class ADDdataset(ASVspoofDataset):
     def __init__(self, data_dir, max_per_class=None, transform=None, target_frames=None):
@@ -274,6 +318,29 @@ class ADDdatasetPretrain(ADDdataset):
 
         return spectrogram, label
 
+def load_total_dataset(path, samples, split=None, transform=None, embedding_size=None):
+    dataset = TotalDataset(path, samples, transform, embedding_size)
+
+    if split is None:
+        loader = DataLoader(dataset, batch_size=16, shuffle=True)
+        return loader, None, None
+
+    # Set validation split ratio
+    total_len = len(dataset)
+    val_len = int(total_len * split)
+    train_len = total_len - val_len
+
+    # Ensure reproducibility
+    generator = torch.Generator()
+    seed = generator.seed()
+
+    # Split
+    train_subset, val_subset = random_split(dataset, [train_len, val_len], generator=generator)
+
+    # DataLoaders
+    train_loader = DataLoader(train_subset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_subset, batch_size=16, shuffle=True)
+    return train_loader, val_loader, seed
 
 def load_ADD_dataset(path, samples, is_AST, split=None, transform=None, embedding_size=None):
     if is_AST:
