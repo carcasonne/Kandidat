@@ -210,7 +210,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
 
 
 def attention_map_wrapper():
-    path = r"checkpoints/asvspoof-ast-model0_20250513_172231"
+    path = r"checkpoints/asvspoof-ast-model_TESTING_9_20250522_021137"
     #"asvspoof-ast-model_TESTING_9_20250522_021137"
     ADD_DATASET_PATH = r"spectrograms/ADD"
     FOR_DATASET_PATH = r"spectrograms/FoR/for-2sec/for-2seconds"
