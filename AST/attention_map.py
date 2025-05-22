@@ -137,6 +137,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
                 output_attentions=True,
                 return_dict=True
             )
+            preds = torch.argmax(outputs.logits, dim=1)
+            pred_label = preds.item()
 
             # Get last layer attention
             attn = outputs.attentions[-1]  # shape: (1, num_heads, seq_len, seq_len)
@@ -168,6 +170,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             # Create figure with three subplots
             fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
+            spectrogram = spectrogram.T
+
             # Plot 1: Original spectrogram
             im1 = axes[0].imshow(spectrogram, origin='lower', aspect='auto', cmap='viridis')
             axes[0].set_title("Original Spectrogram")
@@ -177,6 +181,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             # Plot 2: Attention map alone
             # Normalize attention for better visualization
             attn_normalized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min() + 1e-8)
+            attn_normalized = attn_normalized.T
+
             im2 = axes[1].imshow(attn_normalized, origin='lower', aspect='auto', cmap='jet')
             axes[1].set_title("Attention Map")
             axes[1].axis("off")
@@ -188,8 +194,10 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             axes[2].set_title("Attention Overlay")
             axes[2].axis("off")
 
-            # Main title for the entire figure
-            fig.suptitle(f"Sample {i} - Label: {'bonafide' if label == 0 else 'deepfake'}", fontsize=16)
+            fig.suptitle(
+                f"{flavor_text} Sample {i} - Label: {'bonafide' if label == 0 else 'deepfake'} - Prediction: {'bonafide' if pred_label == 0 else 'deepfake'}",
+                fontsize=16
+            )
 
             # Save the figure
             save_path = os.path.join(save_dir, f"attention_visualization_{flavor_text}_{i}_label_{label}.png")
@@ -202,8 +210,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
 
 
 def attention_map_wrapper():
-    path = r"checkpoints/asvspoof-ast-model_TESTING_9_20250522_021137"
-
+    path = r"checkpoints/asvspoof-ast-model0_20250513_172231"
+    #"asvspoof-ast-model_TESTING_9_20250522_021137"
     ADD_DATASET_PATH = r"spectrograms/ADD"
     FOR_DATASET_PATH = r"spectrograms/FoR/for-2sec/for-2seconds"
     FOR_DATASET_PATH_TRAINING = r"spectrograms/FoR/for-2sec/for-2seconds/Training"
@@ -220,7 +228,7 @@ def attention_map_wrapper():
         device="cuda"
     )
 
-    dir = "attention-maps-all-train"
+    dir = "attention-maps-all-trainv2"
     embedding = 300
     transform = transforms.Compose([
         transforms.Normalize(mean=[0.485], std=[0.229]),
