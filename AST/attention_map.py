@@ -210,9 +210,9 @@ def attention_map_wrapper():
     FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
     ASVS_DATASET_PATH = r"spectrograms"
 
-    samples_add = {"genuine": 50000, "fake": 50000}
-    samples_for = {"Real": 100000, "Fake": 100000}
-    samples_asv = {"bonafide": 50000, "fake": 50000}
+    samples_add = {"genuine": 1000, "fake": 1000}
+    samples_for = {"Real": 1000, "Fake": 1000}
+    samples_asv = {"bonafide": 1000, "fake": 1000}
 
     model = load_modified_ast_model(
         base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
@@ -225,14 +225,14 @@ def attention_map_wrapper():
     transform = transforms.Compose([
         transforms.Normalize(mean=[0.485], std=[0.229]),
     ])
-
+    print("Loading datasets")
     asv_dataset, _, _ = load_ASV_dataset(path=ASVS_DATASET_PATH, samples=samples_asv, is_AST=True, split=None,
                                          transform=transform, embedding_size=embedding)
     for_data = load_FOR_total(path=FOR_DATASET_PATH, samples=samples_for, is_AST=True, transform=transform,
                               embedding_size=embedding)
     add_data, _, _ = load_ADD_dataset(path=ADD_DATASET_PATH, samples=samples_add, is_AST=True, split=None,
                                       transform=transform, embedding_size=embedding)
-
+    print("Making attention maps")
     save_text = "ASV"
     generate_enhanced_attention_maps(model, asv_dataset, num_samples=10, flavor_text=save_text, save_dir=dir)
     save_text = "FoR"
