@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 from torchvision.transforms.functional import normalize
 from tqdm import tqdm
 import cv2
+from torchvision import datasets, transforms
+from Datasets import *
+from modules.models import load_modified_ast_model
 
 from Datasets import ASVspoofDataset
 
@@ -134,6 +137,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
                 output_attentions=True,
                 return_dict=True
             )
+            preds = torch.argmax(outputs.logits, dim=1)
+            pred_label = preds.item()
 
             # Get last layer attention
             attn = outputs.attentions[-1]  # shape: (1, num_heads, seq_len, seq_len)
@@ -165,6 +170,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             # Create figure with three subplots
             fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
+            spectrogram = spectrogram.T
+
             # Plot 1: Original spectrogram
             im1 = axes[0].imshow(spectrogram, origin='lower', aspect='auto', cmap='viridis')
             axes[0].set_title("Original Spectrogram")
@@ -174,6 +181,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             # Plot 2: Attention map alone
             # Normalize attention for better visualization
             attn_normalized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min() + 1e-8)
+            attn_normalized = attn_normalized.T
+
             im2 = axes[1].imshow(attn_normalized, origin='lower', aspect='auto', cmap='jet')
             axes[1].set_title("Attention Map")
             axes[1].axis("off")
@@ -185,8 +194,10 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             axes[2].set_title("Attention Overlay")
             axes[2].axis("off")
 
-            # Main title for the entire figure
-            fig.suptitle(f"Sample {i} - Label: {'bonafide' if label == 0 else 'deepfake'}", fontsize=16)
+            fig.suptitle(
+                f"{flavor_text} Sample {i} - Label: {'bonafide' if label == 0 else 'deepfake'} - Prediction: {'bonafide' if pred_label == 0 else 'deepfake'}",
+                fontsize=16
+            )
 
             # Save the figure
             save_path = os.path.join(save_dir, f"attention_visualization_{flavor_text}_{i}_label_{label}.png")
@@ -196,3 +207,43 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
 
 
     print(f"Enhanced visualizations saved to {save_dir}")
+
+
+def attention_map_wrapper():
+    path = r"checkpoints/asvspoof-ast-model_TESTING_9_20250522_021137"
+    #"asvspoof-ast-model_TESTING_9_20250522_021137"
+    ADD_DATASET_PATH = r"spectrograms/ADD"
+    FOR_DATASET_PATH = r"spectrograms/FoR/for-2sec/for-2seconds"
+    FOR_DATASET_PATH_TRAINING = r"spectrograms/FoR/for-2sec/for-2seconds/Training"
+    FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
+    ASVS_DATASET_PATH = r"spectrograms"
+
+    samples_add = {"genuine": 1000, "fake": 1000}
+    samples_for = {"Real": 1000, "Fake": 1000}
+    samples_asv = {"bonafide": 1000, "fake": 1000}
+
+    model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",  # Original model name
+        finetuned_model_path=path,  # Your saved model
+        device="cuda"
+    )
+
+    dir = "attention-maps-all-trainv2"
+    embedding = 300
+    transform = transforms.Compose([
+        transforms.Normalize(mean=[0.485], std=[0.229]),
+    ])
+    print("Loading datasets")
+    asv_dataset, _, _ = load_ASV_dataset(path=ASVS_DATASET_PATH, samples=samples_asv, is_AST=True, split=None,
+                                         transform=transform, embedding_size=embedding)
+    for_data = load_FOR_total(path=FOR_DATASET_PATH, samples=samples_for, is_AST=True, transform=transform,
+                              embedding_size=embedding)
+    add_data, _, _ = load_ADD_dataset(path=ADD_DATASET_PATH, samples=samples_add, is_AST=True, split=None,
+                                      transform=transform, embedding_size=embedding)
+    print("Making attention maps")
+    save_text = "ASV"
+    generate_enhanced_attention_maps(model, asv_dataset, num_samples=10, flavor_text=save_text, save_dir=dir)
+    save_text = "FoR"
+    generate_enhanced_attention_maps(model, for_data, num_samples=10, flavor_text=save_text, save_dir=dir)
+    save_text = "ADD"
+    generate_enhanced_attention_maps(model, add_data, num_samples=10, flavor_text=save_text, save_dir=dir)
