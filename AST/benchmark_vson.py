@@ -111,7 +111,7 @@ if __name__ == "__main__":
     # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE, WANDB_PROJECT_NAME)
 
     run_name2 = "Pretrain_benchmark_ASV"
-    benchmark.benchmark(Pretrain_model, pre_asv_dataset, run_name2, is_AST=False, device=DEVICE)
+    benchmark.benchmark(Pretrain_model, pre_asv_dataset, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
 
     # run_name2 = "Pretrain_benchmark_ADD"
     # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE)
