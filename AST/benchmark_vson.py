@@ -94,7 +94,7 @@ if __name__ == "__main__":
         pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
 
-    pre_asv_dataset = load_ASV_dataset(ASVS_DATASET_PATH, asv_samples, False, split=None, transform=transform)
+    pre_asv_dataset, _, _  = load_ASV_dataset(ASVS_DATASET_PATH, asv_samples, False, split=None, transform=transform)
 
 
 
