@@ -16,7 +16,7 @@ import modules.models as models
 
 # === CONFIG ===
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-AST_MODEL_CHECKPOINT = "/home/alsk/Kandidat/AST/checkpoints/asvspoof-ast-model5_100K_20250505_002314"
+AST_MODEL_CHECKPOINT = "/home/alsk/Kandidat/AST/checkpoints/asvspoof-ast-model15_100K_20250506_054106"
 PRETRAIN_MODEL_CHECKPOINT = (
     "/home/alsk/Kandidat/AST/checkpoints/asvspoof-pretrain-model19_20250507_081555"
 )
@@ -65,6 +65,15 @@ if __name__ == "__main__":
         asvs_test_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
 
+    asvs_test_dataset_100k = ASVspoofDataset(
+        data_dir=ASVS_DATASET_PATH,
+        max_per_class=samples,
+        target_frames=ast_target_frames,
+    )
+    asvs_test_loader_100k = DataLoader(
+        asvs_test_dataset_100k, batch_size=BATCH_SIZE, shuffle=True
+    )
+
     # Pretrain datasets
     transform = transforms.Compose(
         [
@@ -94,8 +103,7 @@ if __name__ == "__main__":
         pre_for_test_dataset, batch_size=BATCH_SIZE, shuffle=True
     )
 
-    pre_asv_dataset, _, _  = load_ASV_dataset(ASVS_DATASET_PATH, asv_samples, False, split=None, transform=transform)
-
+    pre_asv_dataset_100k, _, _  = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
 
 
     # run_name1 = "AST_benchmark_FoR"
@@ -104,14 +112,17 @@ if __name__ == "__main__":
     # run_name = "AST_benchmark_ADD"
     # benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE, WANDB_PROJECT_NAME)
     
-    # run_name_1 = "Sanity_check"
-    # benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
+    run_name_1 = "AST_benchmark_ASV_100K"
+    benchmark.benchmark(AST_model, asvs_test_loader_100k, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
+
+    run_name_1 = "AST_benchmark_ASV_All"
+    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
 
     # run_name_2 = "Sanity_check_base"
     # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE, WANDB_PROJECT_NAME)
 
-    run_name2 = "Pretrain_benchmark_ASV"
-    benchmark.benchmark(Pretrain_model, pre_asv_dataset, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
+    run_name2 = "Pretrain_benchmark_ASV_100k"
+    benchmark.benchmark(Pretrain_model, pre_asv_dataset_100k, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
 
     # run_name2 = "Pretrain_benchmark_ADD"
     # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE)
