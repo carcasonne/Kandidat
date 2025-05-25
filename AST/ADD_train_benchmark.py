@@ -283,7 +283,7 @@ def train_pretrain(model, train_loader, val_loader, criterion, optimizer, num_ep
     # Training Loop
     login()
     name = "MAIN_100K_ASV"
-    wandb.init(project="Kandidat-Pre-trained", entity="Holdet_thesis", id=name, settings=wandb.Settings(init_timeout=300)  )
+    wandb.init(project="Kandidat-Pre-trained", entity="Holdet_thesis", id=name, mode="offline")
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
