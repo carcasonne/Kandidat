@@ -646,7 +646,7 @@ def pre_train_asv():
 
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    EPOCHS = 1
+    EPOCHS = 20
     print(f"Starting to train")
     flavor_text = "ViT_ASV"
     trained_model = train_pretrain(model, train_load, val_load, cri, opti, EPOCHS, flavor_text, seed)
