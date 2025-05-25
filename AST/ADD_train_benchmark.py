@@ -26,8 +26,9 @@ import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from torchvision import datasets, transforms
 
+from modules.models import load_pretrained_model, load_pretrained_model_attention
 from Datasets import *
-from attention_map import generate_enhanced_attention_maps
+from attention_map import generate_enhanced_attention_maps, generate_enhanced_attention_maps_pretrain
 from wandb_login import login
 from benchmark import benchmark
 
@@ -281,7 +282,8 @@ def train_ast(model, train_loader, val_loader, criterion, optimizer, num_epochs,
 def train_pretrain(model, train_loader, val_loader, criterion, optimizer, num_epochs, flavor_text, seed):
     # Training Loop
     login()
-    wandb.init(project="Kandidat-Pre-trained", entity="Holdet_thesis")
+    name = "MAIN_100K_ASV"
+    wandb.init(project="Kandidat-Pre-trained", entity="Holdet_thesis", id=name, resume="allow")
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
@@ -410,7 +412,7 @@ def train_pretrain(model, train_loader, val_loader, criterion, optimizer, num_ep
             os.makedirs(save_dir, exist_ok=True)
 
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
-            save = os.path.join(save_dir, f"asvspoof-pretrain-model_{flavor_text}_{epoch}_{date}")
+            save = os.path.join(save_dir, f"MAIN_pretrain_model_{flavor_text}_{epoch}_{date}")
 
             torch.save(model.state_dict(), save)
 
@@ -619,3 +621,52 @@ def pre_train_FoR_bench_attention():
     #generate_enhanced_attention_maps(trained_model, asv_data, num_samples=10)
     #generate_enhanced_attention_maps(trained_model, train_load, num_samples=10)
     #generate_enhanced_attention_maps(trained_model, for_data, num_samples=10)
+
+
+def pre_train_asv():
+    ADD_DATASET_PATH = r"spectrograms/ADD"
+    FOR_DATASET_PATH = r"spectrograms/FoR/for-2sec/for-2seconds"
+    FOR_DATASET_PATH_TRAINING = r"spectrograms/FoR/for-2sec/for-2seconds/Training"
+    FOR_DATASET_PATH_TESTING = r"spectrograms/FoR/for-2sec/for-2seconds/Testing"
+    ASVS_DATASET_PATH = r"spectrograms"
+
+    model = load_pretrained_model_attention()
+    print(f"Model setup complete")
+
+    # Define Data Transforms
+    transform = transforms.Compose([
+        StretchMelCropTime(224, 224),
+        transforms.Normalize(mean=[0.485], std=[0.229]),
+    ])
+
+    train_load, val_load, seed = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv, False, split=TRAIN_TEST_SPLIT, transform=transform, embedding_size=None)
+
+    cri = nn.CrossEntropyLoss()
+    opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+    EPOCHS = 20
+    print(f"Starting to train")
+    flavor_text = "ViT_ASV"
+    trained_model = train_pretrain(model, train_load, val_load, cri, opti, EPOCHS, flavor_text, seed)
+    print(f"Model completed training")
+
+    print(f"Benchmark Pre-trained VIT trained on FoR, on ASV")
+    for_data = load_FOR_total(FOR_DATASET_PATH, samples_asv, False, transform=transform)
+    benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on FoR", is_AST=False)
+
+    print(f"Benchmark Pre-trained VIT trained on FoR, on ADD")
+    add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, False, split=None, transform=transform)
+    benchmark(trained_model, add_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ADD", is_AST=False)
+
+    samples_asv_benchmark = {"bonafide": 500000, "fake": 500000}
+    asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv_benchmark, False, split=None, transform=transform, embedding_size=None)
+    benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ASV", is_AST=False)
+
+    samples = 10
+    dir = "attention-maps-vit"
+    save_text = "ASV"
+    generate_enhanced_attention_maps_pretrain(model, asv_data, num_samples=samples, flavor_text=save_text,
+                                              save_dir=dir)
+    save_text = "FoR"
+    generate_enhanced_attention_maps_pretrain(model, for_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
+    save_text = "ADD"
+    generate_enhanced_attention_maps_pretrain(model, add_data, num_samples=samples, flavor_text=save_text, save_dir=dir)

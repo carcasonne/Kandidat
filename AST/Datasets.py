@@ -427,7 +427,6 @@ class StretchMelCropTime:
         # spectrogram shape: (1, T, 128) - (channels, time, mel_bins)
         C, time_steps, mel_bins = spectrogram.shape
 
-        print(f"Input shape: {spectrogram.shape}")  # Debug print
 
         # Add batch dimension to make shape (1, 1, T, 128) for F.interpolate
         # F.interpolate expects (N, C, H, W) format
@@ -447,7 +446,6 @@ class StretchMelCropTime:
         # Remove batch dimension => shape (1, T, 224)
         spectrogram = spectrogram.squeeze(0)
 
-        print(f"After mel stretching: {spectrogram.shape}")  # Debug print
 
         # Now crop or pad time dimension to target
         current_time = spectrogram.shape[1]  # T dimension
@@ -465,7 +463,6 @@ class StretchMelCropTime:
             start = (current_time - self.time_target) // 2
             spectrogram = spectrogram[:, start:start + self.time_target, :]
 
-        print(f"Final shape: {spectrogram.shape}")  # Debug print
 
         # Final shape should be (1, 224, 224)
         return spectrogram

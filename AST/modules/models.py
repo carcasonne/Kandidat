@@ -94,7 +94,7 @@ def load_pretrained_model(saved_model_path, device):
 
     return model
 
-def load_pretrained_model_attention(saved_model_path, device):
+def load_pretrained_model_attention(saved_model_path=None, device='cuda'):
     """
     Loads the weights from a tensorflow file into the vit_base_patch16_224 architecure
     """
@@ -109,8 +109,9 @@ def load_pretrained_model_attention(saved_model_path, device):
     for param in model.vit.blocks[-1].parameters():
         param.requires_grad = True
 
-    # Load saved state dict
-    model.vit.load_state_dict(torch.load(saved_model_path, map_location=device))
+    if saved_model_path is not None:
+        # Load saved state dict
+        model.vit.load_state_dict(torch.load(saved_model_path, map_location=device))
     model.vit.to(device)
 
     return model
@@ -187,4 +188,5 @@ class ViTWithAttentionCapture(nn.Module):
         attn_module.register_forward_hook(capture_attention)
 
     def forward(self, x):
+        self.last_attn_map = None
         return self.vit(x)

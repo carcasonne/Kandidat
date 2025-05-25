@@ -108,7 +108,7 @@ def generate_attention_maps(model, dataset, num_samples=5, save_dir="attention-m
             plt.close()
 
 
-def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text="", save_dir="attention-maps-enhanced",
+def generate_enhanced_attention_maps_pretrain(model, dataset, num_samples=5, flavor_text="", save_dir="attention-maps-enhanced",
                                      device="cuda"):
     """
     Generate visualizations with three panels:
@@ -165,8 +165,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
                 spectrogram_np = spectrogram_np[0]  # Take first channel if multi-channel
 
             original_height, original_width = spectrogram_np.shape
-            print(f"Original spectrogram shape: {spectrogram_np.shape}")
-            print(f"Attention tokens available: {len(cls_attn)}")
+
 
             # Calculate patch dimensions
             # Standard ViT uses 16x16 patches, but let's verify from the attention map size
@@ -202,7 +201,6 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             grid_height = possible_heights[best_idx]
             grid_width = possible_widths[best_idx]
 
-            print(f"Using attention grid: {grid_height} x {grid_width}")
 
             # Ensure we don't exceed available tokens
             tokens_needed = grid_height * grid_width
@@ -217,14 +215,11 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             attn_tokens_used = cls_attn[:tokens_needed].cpu().numpy()
             attn_2d = attn_tokens_used.reshape(grid_height, grid_width)
 
-            print(f"Attention 2D shape: {attn_2d.shape}")
 
             # Resize attention map to match original spectrogram dimensions
             # cv2.resize expects (width, height) but returns (height, width)
             attn_resized = cv2.resize(attn_2d, (original_width, original_height), interpolation=cv2.INTER_LINEAR)
 
-            print(f"Resized attention shape: {attn_resized.shape}")
-            print(f"Target spectrogram shape: {spectrogram_np.shape}")
 
             # Normalize attention map
             attn_normalized = (attn_resized - attn_resized.min()) / (attn_resized.max() - attn_resized.min() + 1e-8)
@@ -266,7 +261,7 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             print(f"Saved visualization to: {save_path}")
             print("-" * 50)
 
-def generate_enhanced_attention_maps_pretrain(model, dataset, num_samples=5, flavor_text="", save_dir="attention-maps-enhanced", device="cuda"):
+def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text="", save_dir="attention-maps-enhanced", device="cuda"):
     """
     Generate visualizations with three panels:
     1. Original spectrogram
@@ -302,7 +297,7 @@ def generate_enhanced_attention_maps_pretrain(model, dataset, num_samples=5, fla
             pred_label = preds.item()
 
             # Get last layer attention
-            attn = model.last_attn_map[0]   # shape: (1, num_heads, seq_len, seq_len)
+            attn = outputs.attentions[-1]  # shape: (1, num_heads, seq_len, seq_len)
             attn = attn[0]  # (num_heads, seq_len, seq_len)
 
             # Average over all heads
@@ -369,9 +364,7 @@ def generate_enhanced_attention_maps_pretrain(model, dataset, num_samples=5, fla
 
     print(f"Enhanced visualizations saved to {save_dir}")
 
-
 def attention_map_wrapper():
-
 
     #path = r"checkpoints/asvspoof-ast-model_TESTING_9_20250522_021137"
     path = r"checkpoints/asvspoof-pretrain-model_ADD_data_0_20250517_101737"
@@ -412,10 +405,11 @@ def attention_map_wrapper():
     add_data, _, _ = load_ADD_dataset(path=ADD_DATASET_PATH, samples=samples_add, is_AST=ast, split=None,
                                       transform=transform, embedding_size=embedding)
     print("Making attention maps")
+    samples = 10
     save_text = "ASV"
-    generate_enhanced_attention_maps(model, asv_dataset, num_samples=2, flavor_text=save_text, save_dir=dir)
+    generate_enhanced_attention_maps_pretrain(model, asv_dataset, num_samples=samples, flavor_text=save_text, save_dir=dir)
     save_text = "FoR"
-    #generate_enhanced_attention_maps(model, for_data, num_samples=10, flavor_text=save_text, save_dir=dir)
+    generate_enhanced_attention_maps_pretrain(model, for_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
     save_text = "ADD"
-    #generate_enhanced_attention_maps(model, add_data, num_samples=10, flavor_text=save_text, save_dir=dir)
+    generate_enhanced_attention_maps_pretrain(model, add_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
 

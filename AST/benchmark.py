@@ -269,7 +269,7 @@ def benchmark(model, data_loader, flavor_text, is_AST):
     # === Weights & Biases Logging ===
     wandb.login()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
-    wandb.init(project="Benchmark", entity="Holdet_thesis", name=flavor_text + "_" + date)
+    wandb.init(project="ViT Benchmark", entity="Holdet_thesis", name=flavor_text + "_" + date)
 
     wandb.log({
         "Accuracy": acc,
