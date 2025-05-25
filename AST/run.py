@@ -1,3 +1,3 @@
 from ADD_train_benchmark import *
 
-get_parameters()
+pre_train_asv()

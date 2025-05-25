@@ -646,7 +646,7 @@ def pre_train_asv():
 
     cri = nn.CrossEntropyLoss()
     opti = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    EPOCHS = 20
+    EPOCHS = 1
     print(f"Starting to train")
     flavor_text = "ViT_ASV"
     trained_model = train_pretrain(model, train_load, val_load, cri, opti, EPOCHS, flavor_text, seed)
@@ -655,15 +655,15 @@ def pre_train_asv():
     print(f"Benchmark Pre-trained VIT trained on FoR, on ASV")
     project = "ViT Benchmarking"
     for_data = load_FOR_total(FOR_DATASET_PATH, samples_asv, False, transform=transform)
-    benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on FoR", is_AST=False, project_name=project)
+    benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on FoR", is_AST=False, device=device, project_name=project)
 
     print(f"Benchmark Pre-trained VIT trained on FoR, on ADD")
     add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, False, split=None, transform=transform)
-    benchmark(trained_model, add_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ADD", is_AST=False, project_name=project)
+    benchmark(trained_model, add_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ADD", is_AST=False, device=device, project_name=project)
 
     samples_asv_benchmark = {"bonafide": 500000, "fake": 500000}
     asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv_benchmark, False, split=None, transform=transform, embedding_size=None)
-    benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ASV", is_AST=False, project_name=project)
+    benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ASV", is_AST=False, device=device, project_name=project)
 
     samples = 10
     dir = "attention-maps-vit"
