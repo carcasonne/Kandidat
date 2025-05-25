@@ -91,8 +91,29 @@ def load_pretrained_model(saved_model_path, device):
     # Load saved state dict
     model.load_state_dict(torch.load(saved_model_path, map_location=device))
     model.to(device)
+
     return model
 
+def load_pretrained_model_attention(saved_model_path, device):
+    """
+    Loads the weights from a tensorflow file into the vit_base_patch16_224 architecure
+    """
+    model = ViTWithAttentionCapture(pretrained=True, in_chans=1, num_classes=2)
+    # Freeze all layers
+    for param in model.vit.parameters():
+        param.requires_grad = False
+
+    # Unfreeze head and last transformer block
+    for param in model.vit.head.parameters():
+        param.requires_grad = True
+    for param in model.vit.blocks[-1].parameters():
+        param.requires_grad = True
+
+    # Load saved state dict
+    model.vit.load_state_dict(torch.load(saved_model_path, map_location=device))
+    model.vit.to(device)
+
+    return model
 
 def load_base_ast_model(device):
     """
@@ -137,3 +158,33 @@ def load_base_ast_model(device):
         )
     model.to(device)
     return model
+
+
+class ViTWithAttentionCapture(nn.Module):
+    def __init__(self, model_name="vit_base_patch16_224", pretrained=True, in_chans=1, num_classes=2):
+        super().__init__()
+        self.vit = timm.create_model(model_name, pretrained=pretrained, in_chans=in_chans)
+        self.last_attn_map = None
+
+        # Replace classification head
+        num_ftrs = self.vit.head.in_features
+        self.vit.head = nn.Linear(num_ftrs, num_classes)
+
+        # Register hook on the last block's attention module
+        attn_module = self.vit.blocks[-1].attn
+
+        def capture_attention(module, input, output):
+            # Recompute attention weights manually
+            B, N, C = input[0].shape
+            qkv = module.qkv(input[0])  # (B, N, 3*dim)
+            qkv = qkv.reshape(B, N, 3, module.num_heads, C // module.num_heads).permute(2, 0, 3, 1, 4)
+            q, k, v = qkv[0], qkv[1], qkv[2]  # each: (B, heads, N, dim_head)
+
+            attn_scores = (q @ k.transpose(-2, -1)) * module.scale  # (B, heads, N, N)
+            attn_weights = attn_scores.softmax(dim=-1)
+            self.last_attn_map = attn_weights.detach()  # (B, heads, N, N)
+
+        attn_module.register_forward_hook(capture_attention)
+
+    def forward(self, x):
+        return self.vit(x)
