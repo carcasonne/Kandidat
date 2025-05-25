@@ -34,7 +34,7 @@ from benchmark import benchmark
 
 samples_add = {"genuine": 50000, "fake":50000}
 samples_for = {"Real": 100000, "Fake":100000}
-samples_asv = {"bonafide": 50000, "fake":50000}
+samples_asv = {"bonafide": 100000, "fake":50000}
 
 EPOCHS = 20
 TRAIN_TEST_SPLIT = 0.2
@@ -283,7 +283,7 @@ def train_pretrain(model, train_loader, val_loader, criterion, optimizer, num_ep
     # Training Loop
     login()
     name = "MAIN_100K_ASV"
-    wandb.init(project="Kandidat-Pre-trained", entity="Holdet_thesis", id=name, resume="allow")
+    wandb.init(project="Kandidat-Pre-trained", entity="Holdet_thesis", id=name)
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
