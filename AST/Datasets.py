@@ -417,37 +417,55 @@ def load_FOR_dataset(train_path, test_path, is_AST, samples, transform=None, tar
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True)
     return train_loader, val_loader, None
 
+
 class StretchMelCropTime:
     def __init__(self, mel_target=224, time_target=224):
         self.mel_target = mel_target
         self.time_target = time_target
 
     def __call__(self, spectrogram):
-        # spectrogram shape: (1, 128, T)
-        C, mel_bins, time_steps = spectrogram.shape
+        # spectrogram shape: (1, T, 128) - (channels, time, mel_bins)
+        C, time_steps, mel_bins = spectrogram.shape
 
-        # Add batch dimension to make shape (1, 1, 128, T)
-        spectrogram = spectrogram.unsqueeze(0)
+        print(f"Input shape: {spectrogram.shape}")  # Debug print
 
-        # Resize mel bins (128 -> 224)
+        # Add batch dimension to make shape (1, 1, T, 128) for F.interpolate
+        # F.interpolate expects (N, C, H, W) format
+        spectrogram = spectrogram.unsqueeze(0)  # Now: (1, 1, T, 128)
+
+        # Resize: we want to stretch mel_bins (128 -> 224) and keep time_steps
+        # F.interpolate size parameter is (H, W) where H=height, W=width
+        # In our case: H=time_steps, W=mel_bins
         spectrogram = F.interpolate(
             spectrogram,
-            size=(self.mel_target, time_steps),
+            size=(time_steps, self.mel_target),  # (time_steps, mel_target)
             mode='bilinear',
             align_corners=False
         )
+        # Now shape: (1, 1, T, 224)
 
-        # Remove batch dimension => shape (1, 224, T)
+        # Remove batch dimension => shape (1, T, 224)
         spectrogram = spectrogram.squeeze(0)
 
-        # Now crop or pad time dimension to 224
-        if time_steps < self.time_target:
-            pad_total = self.time_target - time_steps
+        print(f"After mel stretching: {spectrogram.shape}")  # Debug print
+
+        # Now crop or pad time dimension to target
+        current_time = spectrogram.shape[1]  # T dimension
+
+        if current_time < self.time_target:
+            # Pad time dimension
+            pad_total = self.time_target - current_time
             pad_left = pad_total // 2
             pad_right = pad_total - pad_left
-            spectrogram = F.pad(spectrogram, (pad_left, pad_right))
-        elif time_steps > self.time_target:
-            start = (time_steps - self.time_target) // 2
-            spectrogram = spectrogram[:, :, start:start + self.time_target]
+            # F.pad padding format: (pad_last_dim_left, pad_last_dim_right, pad_second_last_left, pad_second_last_right, ...)
+            # For shape (1, T, 224), we want to pad the T dimension (second dimension)
+            spectrogram = F.pad(spectrogram, (0, 0, pad_left, pad_right))
+        elif current_time > self.time_target:
+            # Crop time dimension (center crop)
+            start = (current_time - self.time_target) // 2
+            spectrogram = spectrogram[:, start:start + self.time_target, :]
 
+        print(f"Final shape: {spectrogram.shape}")  # Debug print
+
+        # Final shape should be (1, 224, 224)
         return spectrogram

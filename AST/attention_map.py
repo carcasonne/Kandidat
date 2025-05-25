@@ -232,6 +232,8 @@ def generate_enhanced_attention_maps(model, dataset, num_samples=5, flavor_text=
             # Create figure with three subplots
             fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
+            spectrogram_np = spectrogram_np.T
+            attn_normalized = attn_normalized.T
             # Plot 1: Original spectrogram
             im1 = axes[0].imshow(spectrogram_np, origin='lower', aspect='auto', cmap='viridis')
             axes[0].set_title("Original Spectrogram")
