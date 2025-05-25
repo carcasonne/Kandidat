@@ -26,6 +26,7 @@ import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from torchvision import datasets, transforms
 
+from modules.inference import run_inference, print_inference_results
 from modules.models import load_pretrained_model, load_pretrained_model_attention
 from Datasets import *
 from attention_map import generate_enhanced_attention_maps, generate_enhanced_attention_maps_pretrain
@@ -33,7 +34,7 @@ from wandb_login import login
 from modules.benchmark import benchmark
 import modules.utils as utils
 import modules.metrics as metrics
-
+from modules.models import load_modified_ast_model
 
 samples_add = {"genuine": 50000, "fake":50000}
 samples_for = {"Real": 100000, "Fake":100000}
@@ -675,6 +676,22 @@ def pre_train_asv():
     save_text = "ADD"
     generate_enhanced_attention_maps_pretrain(model, add_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
 
+
+def test_single_clip(save_folder):
+    embedding_size = 300
+    AST_MODEL_CHECKPOINT = "checkpoints/asv_100k_from_hpc"
+    AST_model = load_modified_ast_model(
+        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
+        finetuned_model_path=AST_MODEL_CHECKPOINT,
+        device="cuda",
+    )
+
+    # Load dataset
+    inference_dataset = InferenceSpectrogramDataset(save_folder, target_frames=300)
+
+    # Run inference
+    results = run_inference(AST_model, inference_dataset, device="cuda", save_results=True )
+    print_inference_results(results)
 
 def count_parameters(model):
     total_params = sum(p.numel() for p in model.parameters())

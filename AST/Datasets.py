@@ -69,6 +69,7 @@ class ASVspoofDataset(Dataset):
         # Load precomputed log-mel spectrogram
         spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
         spectrogram = spectrogram.T
+        print(f"yoyoyo its me shape again TOP {spectrogram.shape}")
 
         # Ensure correct shape: (300, 128)
         # 300 since this is the average
@@ -91,6 +92,7 @@ class ASVspoofDataset(Dataset):
             spectrogram = self.transform(spectrogram)
             spectrogram = spectrogram.squeeze(0)
 
+        print(f"its a me AFTER {spectrogram.shape}")
         return {
             "input_values": spectrogram,
             "labels": torch.tensor(label, dtype=torch.long)
@@ -317,6 +319,19 @@ class ADDdatasetPretrain(ADDdataset):
             spectrogram = self.transform(spectrogram)
 
         return spectrogram, label
+
+class InferenceSpectrogramDataset(ASVspoofDataset):
+    def __init__(self, data_dir, target_frames=300, transform=None, label=1):
+        self.data_dir = data_dir
+        self.target_frames = target_frames
+        self.transform = transform
+        #label = 0 for bonafide
+        # label = 1 for fake
+        self.files = [
+            (os.path.join(data_dir, f), label)
+            for f in os.listdir(data_dir)
+            if f.endswith(".npy")
+        ]
 
 def load_total_dataset(path, samples, split=None, transform=None, embedding_size=None):
     dataset = TotalDataset(path, samples, transform, embedding_size)
