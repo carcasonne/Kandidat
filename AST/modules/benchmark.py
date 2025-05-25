@@ -63,7 +63,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name):
     wandb.login()
     date = datetime.now().strftime("%Y%m%d_%H%M%S")
     wandb.init(
-        project=project_name, entity="Holdet_thesis", name=flavor_text + "_" + date
+        project=project_name, entity="Holdet_thesis", name=flavor_text + "_" + date, mode="offline"
     )
 
     wandb.log(

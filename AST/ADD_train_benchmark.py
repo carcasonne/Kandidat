@@ -30,7 +30,10 @@ from modules.models import load_pretrained_model, load_pretrained_model_attentio
 from Datasets import *
 from attention_map import generate_enhanced_attention_maps, generate_enhanced_attention_maps_pretrain
 from wandb_login import login
-from benchmark import benchmark
+from modules.benchmark import benchmark
+import modules.utils as utils
+import modules.metrics as metrics
+
 
 samples_add = {"genuine": 50000, "fake":50000}
 samples_for = {"Real": 100000, "Fake":100000}
@@ -650,16 +653,17 @@ def pre_train_asv():
     print(f"Model completed training")
 
     print(f"Benchmark Pre-trained VIT trained on FoR, on ASV")
+    project = "ViT Benchmarking"
     for_data = load_FOR_total(FOR_DATASET_PATH, samples_asv, False, transform=transform)
-    benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on FoR", is_AST=False)
+    benchmark(trained_model, for_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on FoR", is_AST=False, project_name=project)
 
     print(f"Benchmark Pre-trained VIT trained on FoR, on ADD")
     add_data, _, _ = load_ADD_dataset(ADD_DATASET_PATH, samples_add, False, split=None, transform=transform)
-    benchmark(trained_model, add_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ADD", is_AST=False)
+    benchmark(trained_model, add_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ADD", is_AST=False, project_name=project)
 
     samples_asv_benchmark = {"bonafide": 500000, "fake": 500000}
     asv_data, _, _ = load_ASV_dataset(ASVS_DATASET_PATH, samples_asv_benchmark, False, split=None, transform=transform, embedding_size=None)
-    benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ASV", is_AST=False)
+    benchmark(trained_model, asv_data, flavor_text="Benchmark Pre-trained VIT trained on ASV, on ASV", is_AST=False, project_name=project)
 
     samples = 10
     dir = "attention-maps-vit"
@@ -670,3 +674,26 @@ def pre_train_asv():
     generate_enhanced_attention_maps_pretrain(model, for_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
     save_text = "ADD"
     generate_enhanced_attention_maps_pretrain(model, add_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
+
+
+def count_parameters(model):
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total_params, trainable_params
+
+
+def get_parameters():
+
+    model = setup_pretrain_model()
+    embedding_size = 200
+    model2 = setup_ast_model(MODEL_NAME, embedding_size, layers_to_freeze)
+
+    total, trainable = count_parameters(model)
+    print(f"ViT Total parameters: {total:,}")
+    print(f"ViT Trainable parameters: {trainable:,}")
+
+    total, trainable = count_parameters(model2)
+    print(f"AST Total parameters: {total:,}")
+    print(f"AST Trainable parameters: {trainable:,}")
+
+

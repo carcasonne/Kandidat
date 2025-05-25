@@ -242,6 +242,7 @@ def benchmark(model, data_loader, flavor_text, is_AST):
     # === Benchmarking Loop ===
     all_preds = []
     all_labels = []
+    all_probs = []
     model.eval()
 
     with torch.no_grad():
