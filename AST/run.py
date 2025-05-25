@@ -1,3 +1,3 @@
 from ADD_train_benchmark import *
 
-ast_train_all_datasets()
+pre_train_asv()
