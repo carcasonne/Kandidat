@@ -15,7 +15,7 @@ model = models.load_modified_ast_model(
 # Load dataset
 dataset = ADDdataset(
   data_dir=statics.ADD_DATASET_PATH,
-  max_per_class=statics.k_samples,
+  max_per_class=statics.all_samples,
   target_frames=statics.AST_TARGET_FRAMES
 )
 loader = DataLoader(dataset, batch_size=statics.BATCH_SIZE, shuffle=False)
