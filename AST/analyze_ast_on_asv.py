@@ -8,7 +8,7 @@ import modules.datasets as datasets
 # Load model and data
 model = models.load_modified_ast_model(
     base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
-    finetuned_model_path=statics.AST_MODEL_PATH,
+    finetuned_model_path=statics.AST_MODEL_CHECKPOINT,
     device=statics.DEVICE
 )
 
