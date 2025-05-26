@@ -19,7 +19,7 @@ import modules.results_cache as results_cache
 class ModelAnalyzer:
     """Analyzer for model predictions and misclassifications."""
     
-    def __init__(self, model, device='cuda', is_ast=True):
+    def __init__(self, model, device='cuda', is_ast=True, model_path=None):
         """
         Initialize the model analyzer.
         
@@ -27,10 +27,12 @@ class ModelAnalyzer:
             model: The trained model to analyze
             device: Device to run inference on
             is_ast: Whether the model is an AST model or pretrained model
+            model_path: Path to model for caching results
         """
         self.model = model
         self.device = device
         self.is_ast = is_ast
+        self.model_path = model_path
         self.model.eval()
         
         # Storage for analysis results
@@ -353,8 +355,8 @@ def quick_analysis(model, dataloader, dataset_name, device='cuda', is_ast=True, 
     Returns:
         ModelAnalyzer: The analyzer with results
     """
-    analyzer = ModelAnalyzer(model, device=device, is_ast=is_ast)
-    summary = analyzer.analyze_dataset(dataloader, dataset_name, model_path=model_path)
+    analyzer = ModelAnalyzer(model, device=device, is_ast=is_ast, model_path=model_path)
+    summary = analyzer.analyze_dataset(dataloader, dataset_name)
     
     # Print detailed report
     AnalysisReporter.print_detailed_report(analyzer, dataset_name)
