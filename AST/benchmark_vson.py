@@ -112,20 +112,20 @@ if __name__ == "__main__":
     # run_name = "AST_benchmark_ADD"
     # benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE, WANDB_PROJECT_NAME)
     
-    run_name_1 = "AST_benchmark_ASV_100K"
-    benchmark.benchmark(AST_model, asvs_test_loader_100k, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
+    # run_name_1 = "AST_benchmark_ASV_100K"
+    # benchmark.benchmark(AST_model, asvs_test_loader_100k, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
 
-    run_name_1 = "AST_benchmark_ASV_All"
-    benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
+    # run_name_1 = "AST_benchmark_ASV_All"
+    # benchmark.benchmark(AST_model, asvs_test_loader, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
 
     # run_name_2 = "Sanity_check_base"
     # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE, WANDB_PROJECT_NAME)
 
-    run_name2 = "Pretrain_benchmark_ASV_100k"
-    benchmark.benchmark(Pretrain_model, pre_asv_dataset_100k, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
+    # run_name2 = "Pretrain_benchmark_ASV_100k"
+    # benchmark.benchmark(Pretrain_model, pre_asv_dataset_100k, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
 
-    # run_name2 = "Pretrain_benchmark_ADD"
-    # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE)
+    run_name2 = "Pretrain_benchmark_ADD"
+    benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE)
 
     # run_name3 = "Pretrain_benchmark_FoR"
     # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE)
