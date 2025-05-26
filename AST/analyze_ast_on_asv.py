@@ -12,7 +12,7 @@ model = models.load_modified_ast_model(
     device=statics.DEVICE
 )
 
-dataset = datasets.ADDdataset(statics.ADD_DATA_PATH, max_per_class=statics.k_samples, target_frames=statics.AST_TARGET_FRAMES)
+dataset = datasets.ADDdataset(statics.ADD_DATASET_PATH, max_per_class=statics.k_samples, target_frames=statics.AST_TARGET_FRAMES)
 loader = DataLoader(dataset, batch_size=16, shuffle=False)
 
 # Analyze
