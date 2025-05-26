@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 import modules.models as models
 import modules.analysis as analysis
-import scripts.vson_statics as statics
+import vson_statics as statics
 import modules.datasets as datasets
 
 # Quick configuration
