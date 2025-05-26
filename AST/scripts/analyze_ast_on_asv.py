@@ -1,8 +1,8 @@
 from torch.utils.data import DataLoader
-from modules.datasets import ADDdataset
 import modules.models as models
 import modules.analysis as analysis
 import scripts.vson_statics as statics
+import modules.datasets as datasets
 
 # Quick configuration
 # Load model and data
@@ -12,7 +12,7 @@ model = models.load_modified_ast_model(
     device=statics.DEVICE
 )
 
-dataset = ADDdataset(statics.ADD_DATA_PATH, max_per_class=statics.k_samples, target_frames=statics.AST_TARGET_FRAMES)
+dataset = datasets.ADDdataset(statics.ADD_DATA_PATH, max_per_class=statics.k_samples, target_frames=statics.AST_TARGET_FRAMES)
 loader = DataLoader(dataset, batch_size=16, shuffle=False)
 
 # Analyze
