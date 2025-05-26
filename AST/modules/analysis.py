@@ -13,6 +13,7 @@ from collections import defaultdict
 import os
 from tqdm import tqdm
 from pathlib import Path
+import modules.results_cache as results_cache
 
 
 class ModelAnalyzer:
@@ -336,7 +337,7 @@ class AnalysisReporter:
 
 
 # Convenience functions for quick analysis
-def quick_analysis(model, dataloader, dataset_name, device='cuda', is_ast=True, save_dir=None):
+def quick_analysis(model, dataloader, dataset_name, device='cuda', is_ast=True, save_dir=None, model_path=None):
     """
     Perform a quick analysis of a model on a dataset.
     
@@ -347,15 +348,20 @@ def quick_analysis(model, dataloader, dataset_name, device='cuda', is_ast=True, 
         device: Device to use
         is_ast: Whether model is AST format
         save_dir: Directory to save results (optional)
+        model_path: Path to model for caching results
     
     Returns:
         ModelAnalyzer: The analyzer with results
     """
     analyzer = ModelAnalyzer(model, device=device, is_ast=is_ast)
-    summary = analyzer.analyze_dataset(dataloader, dataset_name)
+    summary = analyzer.analyze_dataset(dataloader, dataset_name, model_path=model_path)
     
     # Print detailed report
     AnalysisReporter.print_detailed_report(analyzer, dataset_name)
+    
+    # Create save directory if needed
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
     
     # Generate visualizations
     AnalysisVisualizer.plot_confusion_matrix(
@@ -372,7 +378,6 @@ def quick_analysis(model, dataloader, dataset_name, device='cuda', is_ast=True, 
     
     # Save misclassified samples if save_dir provided
     if save_dir:
-        os.makedirs(save_dir, exist_ok=True)
         AnalysisReporter.save_misclassified_samples(
             analyzer.misclassified_samples,
             os.path.join(save_dir, f'{dataset_name}_misclassified.csv')
