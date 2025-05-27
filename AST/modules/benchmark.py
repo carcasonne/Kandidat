@@ -14,11 +14,210 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_curve,
     auc,
+    f1_score,
+    precision_score,
+    recall_score,
+    balanced_accuracy_score,
+    matthews_corrcoef
 )
 from tqdm import tqdm
 
 import modules.utils as utils
 import modules.metrics as metrics
+
+
+def print_confusion_matrix(cm, class_names=['Bonafide', 'Spoof']):
+    """
+    Print a nicely formatted confusion matrix in the terminal.
+    """
+    print("\n" + "="*40)
+    print("📊 CONFUSION MATRIX")
+    print("="*40)
+    
+    # Calculate percentages
+    cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+    
+    # Print header
+    print(f"{'':>12} {'Predicted':>20}")
+    print(f"{'Actual':>12} {class_names[0]:>10} {class_names[1]:>10} {'Total':>8}")
+    print("-" * 45)
+    
+    # Print rows
+    for i, class_name in enumerate(class_names):
+        row_total = cm[i].sum()
+        print(f"{class_name:>10} {cm[i][0]:>8} ({cm_percent[i][0]:>5.1f}%) "
+              f"{cm[i][1]:>8} ({cm_percent[i][1]:>5.1f}%) {row_total:>6}")
+    
+    # Print totals
+    col_totals = cm.sum(axis=0)
+    total = cm.sum()
+    print("-" * 45)
+    print(f"{'Total':>10} {col_totals[0]:>10} {col_totals[1]:>10} {total:>6}")
+    
+    # Print key metrics derived from confusion matrix
+    tn, fp, fn, tp = cm.ravel()
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+    
+    print(f"\n📈 Key Rates:")
+    print(f"   True Positive Rate (Sensitivity/Recall): {sensitivity:.3f}")
+    print(f"   True Negative Rate (Specificity): {specificity:.3f}")
+    print(f"   False Positive Rate: {fp/(fp+tn):.3f}")
+    print(f"   False Negative Rate: {fn/(fn+tp):.3f}")
+
+
+def calculate_comprehensive_metrics(all_labels, all_preds, all_probs):
+    """
+    Calculate a comprehensive set of evaluation metrics.
+    """
+    # Convert to numpy arrays
+    all_labels = np.array(all_labels)
+    all_preds = np.array(all_preds)
+    all_probs = np.array(all_probs)
+    
+    # Basic classification metrics
+    accuracy = accuracy_score(all_labels, all_preds)
+    balanced_acc = balanced_accuracy_score(all_labels, all_preds)
+    precision = precision_score(all_labels, all_preds)
+    recall = recall_score(all_labels, all_preds)
+    f1 = f1_score(all_labels, all_preds)
+    mcc = matthews_corrcoef(all_labels, all_preds)
+    
+    # ROC and PR curves
+    fpr, tpr, _ = roc_curve(all_labels, all_probs)
+    roc_auc = auc(fpr, tpr)
+    
+    precision_curve, recall_curve, _ = precision_recall_curve(all_labels, all_probs)
+    pr_auc = auc(recall_curve, precision_curve)
+    
+    # Find optimal threshold using Youden's J statistic
+    j_scores = tpr - fpr
+    optimal_idx = np.argmax(j_scores)
+    optimal_threshold = _[optimal_idx] if len(_) > optimal_idx else 0.5
+    
+    return {
+        'accuracy': accuracy,
+        'balanced_accuracy': balanced_acc,
+        'precision': precision,
+        'recall': recall,
+        'f1_score': f1,
+        'matthews_corrcoef': mcc,
+        'roc_auc': roc_auc,
+        'pr_auc': pr_auc,
+        'optimal_threshold': optimal_threshold,
+        'youden_j': j_scores[optimal_idx] if len(j_scores) > optimal_idx else 0
+    }
+
+
+def analyze_threshold_performance(all_labels, all_probs, thresholds=None):
+    """
+    Analyze model performance across different decision thresholds.
+    """
+    if thresholds is None:
+        thresholds = np.arange(0.1, 0.9, 0.1)
+    
+    results = []
+    
+    for threshold in thresholds:
+        preds = (np.array(all_probs) >= threshold).astype(int)
+        acc = accuracy_score(all_labels, preds)
+        prec = precision_score(all_labels, preds, zero_division=0)
+        rec = recall_score(all_labels, preds, zero_division=0)
+        f1 = f1_score(all_labels, preds, zero_division=0)
+        
+        results.append({
+            'threshold': threshold,
+            'accuracy': acc,
+            'precision': prec,
+            'recall': rec,
+            'f1_score': f1
+        })
+    
+    return results
+
+
+def analyze_class_distribution(all_labels, all_probs):
+    """
+    Analyze the distribution and characteristics of each class.
+    """
+    all_labels = np.array(all_labels)
+    all_probs = np.array(all_probs)
+    
+    # Class counts
+    bonafide_count = np.sum(all_labels == 0)
+    spoof_count = np.sum(all_labels == 1)
+    total = len(all_labels)
+    
+    # Probability statistics by class
+    bonafide_probs = all_probs[all_labels == 0]
+    spoof_probs = all_probs[all_labels == 1]
+    
+    return {
+        'bonafide_count': bonafide_count,
+        'spoof_count': spoof_count,
+        'bonafide_percentage': bonafide_count / total * 100,
+        'spoof_percentage': spoof_count / total * 100,
+        'bonafide_prob_stats': {
+            'mean': np.mean(bonafide_probs),
+            'std': np.std(bonafide_probs),
+            'median': np.median(bonafide_probs),
+            'min': np.min(bonafide_probs),
+            'max': np.max(bonafide_probs),
+            'q25': np.percentile(bonafide_probs, 25),
+            'q75': np.percentile(bonafide_probs, 75)
+        },
+        'spoof_prob_stats': {
+            'mean': np.mean(spoof_probs),
+            'std': np.std(spoof_probs),
+            'median': np.median(spoof_probs),
+            'min': np.min(spoof_probs),
+            'max': np.max(spoof_probs),
+            'q25': np.percentile(spoof_probs, 25),
+            'q75': np.percentile(spoof_probs, 75)
+        }
+    }
+
+
+def analyze_prediction_calibration(all_labels, all_probs, n_bins=10):
+    """
+    Analyze how well-calibrated the model's probability predictions are.
+    """
+    all_labels = np.array(all_labels)
+    all_probs = np.array(all_probs)
+    
+    bin_boundaries = np.linspace(0, 1, n_bins + 1)
+    bin_lowers = bin_boundaries[:-1]
+    bin_uppers = bin_boundaries[1:]
+    
+    calibration_results = []
+    
+    for bin_lower, bin_upper in zip(bin_lowers, bin_uppers):
+        in_bin = (all_probs > bin_lower) & (all_probs <= bin_upper)
+        prop_in_bin = in_bin.mean()
+        
+        if prop_in_bin > 0:
+            accuracy_in_bin = all_labels[in_bin].mean()
+            avg_confidence_in_bin = all_probs[in_bin].mean()
+            count_in_bin = in_bin.sum()
+            
+            calibration_results.append({
+                'bin_lower': bin_lower,
+                'bin_upper': bin_upper,
+                'accuracy': accuracy_in_bin,
+                'confidence': avg_confidence_in_bin,
+                'count': count_in_bin,
+                'proportion': prop_in_bin
+            })
+    
+    # Calculate Expected Calibration Error (ECE)
+    ece = 0
+    for result in calibration_results:
+        ece += result['proportion'] * abs(result['accuracy'] - result['confidence'])
+    
+    return {
+        'calibration_bins': calibration_results,
+        'expected_calibration_error': ece
+    }
 
 
 def analyze_model_uncertainty(all_probs, all_labels, all_preds, uncertainty_threshold=0.1):
@@ -249,24 +448,65 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     cm = confusion_matrix(all_labels, all_preds)
     tn, fp, fn, tp = cm.ravel()
 
+    # Print confusion matrix in terminal
+    print_confusion_matrix(cm)
+
     # Calculate EER (Equal Error Rate)
     eer, threshold = metrics.compute_eer(all_labels, all_probs)
-    print(f"🔍 Equal Error Rate (EER): {eer * 100:.2f}%")
+    print(f"\n🔍 Equal Error Rate (EER): {eer * 100:.2f}%")
     print(f"   Threshold at EER: {threshold:.4f}")
 
     # === Enhanced Analysis ===
-    print("\n" + "="*50)
-    print("🔬 ENHANCED ANALYSIS")
-    print("="*50)
+    print("\n" + "="*60)
+    print("🔬 COMPREHENSIVE ANALYSIS")
+    print("="*60)
     
-    # 1. Confusion Matrix Analysis
-    if save_plots:
-        cm_path = os.path.join(output_dir, "confusion_matrix.png")
-        create_detailed_confusion_matrix(all_labels, all_preds, cm_path)
-    else:
-        create_detailed_confusion_matrix(all_labels, all_preds)
+    # 1. Comprehensive metrics
+    comp_metrics = calculate_comprehensive_metrics(all_labels, all_preds, all_probs)
+    print(f"\n📊 COMPREHENSIVE METRICS:")
+    print(f"   Accuracy: {comp_metrics['accuracy']:.4f}")
+    print(f"   Balanced Accuracy: {comp_metrics['balanced_accuracy']:.4f}")
+    print(f"   Precision: {comp_metrics['precision']:.4f}")
+    print(f"   Recall: {comp_metrics['recall']:.4f}")
+    print(f"   F1-Score: {comp_metrics['f1_score']:.4f}")
+    print(f"   Matthews Correlation Coefficient: {comp_metrics['matthews_corrcoef']:.4f}")
+    print(f"   ROC-AUC: {comp_metrics['roc_auc']:.4f}")
+    print(f"   PR-AUC: {comp_metrics['pr_auc']:.4f}")
+    print(f"   Optimal Threshold (Youden's J): {comp_metrics['optimal_threshold']:.4f}")
     
-    # 2. Model Uncertainty Analysis
+    # 2. Class distribution analysis
+    class_dist = analyze_class_distribution(all_labels, all_probs)
+    print(f"\n🎯 CLASS DISTRIBUTION:")
+    print(f"   Bonafide samples: {class_dist['bonafide_count']} ({class_dist['bonafide_percentage']:.1f}%)")
+    print(f"   Spoof samples: {class_dist['spoof_count']} ({class_dist['spoof_percentage']:.1f}%)")
+    print(f"   Dataset balance ratio: {class_dist['bonafide_count']/class_dist['spoof_count']:.2f}:1")
+    
+    print(f"\n📈 PROBABILITY STATISTICS BY CLASS:")
+    b_stats = class_dist['bonafide_prob_stats']
+    s_stats = class_dist['spoof_prob_stats']
+    print(f"   Bonafide - Mean: {b_stats['mean']:.3f}, Std: {b_stats['std']:.3f}, Median: {b_stats['median']:.3f}")
+    print(f"   Spoof    - Mean: {s_stats['mean']:.3f}, Std: {s_stats['std']:.3f}, Median: {s_stats['median']:.3f}")
+    print(f"   Class Separation (mean diff): {abs(s_stats['mean'] - b_stats['mean']):.3f}")
+    
+    # 3. Model calibration analysis
+    calibration = analyze_prediction_calibration(all_labels, all_probs)
+    print(f"\n🎚️ MODEL CALIBRATION:")
+    print(f"   Expected Calibration Error (ECE): {calibration['expected_calibration_error']:.4f}")
+    print("   Calibration by confidence bins:")
+    for bin_info in calibration['calibration_bins']:
+        print(f"     [{bin_info['bin_lower']:.1f}-{bin_info['bin_upper']:.1f}]: "
+              f"Accuracy={bin_info['accuracy']:.3f}, Confidence={bin_info['confidence']:.3f}, "
+              f"Count={bin_info['count']}")
+    
+    # 4. Threshold analysis
+    threshold_analysis = analyze_threshold_performance(all_labels, all_probs)
+    print(f"\n⚖️ THRESHOLD PERFORMANCE ANALYSIS:")
+    print("   Threshold | Accuracy | Precision | Recall | F1-Score")
+    print("   " + "-"*50)
+    for result in threshold_analysis:
+        print(f"      {result['threshold']:.1f}    |   {result['accuracy']:.3f}  |   {result['precision']:.3f}   | {result['recall']:.3f}  |  {result['f1_score']:.3f}")
+    
+    # 5. Model Uncertainty Analysis
     uncertainty_analysis = analyze_model_uncertainty(
         all_probs, all_labels, all_preds, uncertainty_threshold
     )
@@ -276,7 +516,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     print(f"   Accuracy on confident samples: {uncertainty_analysis['confident_accuracy']:.3f}")
     print(f"   Average confidence: {uncertainty_analysis['avg_confidence']:.3f}")
     
-    # 3. Wrong Predictions Analysis
+    # 6. Wrong Predictions Analysis
     wrong_analysis = analyze_wrong_predictions(all_labels, all_preds, all_probs)
     print(f"\n❌ WRONG PREDICTIONS ANALYSIS:")
     print(f"   Total wrong: {wrong_analysis['total_wrong']} ({wrong_analysis['wrong_percentage']:.2f}%)")
@@ -286,22 +526,16 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     print(f"   Average spoof prob for FPs: {wrong_analysis['fp_avg_prob']:.3f}")
     print(f"   Average spoof prob for FNs: {wrong_analysis['fn_avg_prob']:.3f}")
     
-    # 4. Probability Distribution Analysis
+    # 7. Visualizations (optional)    
     if save_plots:
+        cm_path = os.path.join(output_dir, "confusion_matrix.png")
+        create_detailed_confusion_matrix(all_labels, all_preds, cm_path)
+        
         prob_dist_path = os.path.join(output_dir, "probability_distribution.png")
         prob_stats = analyze_probability_distribution(all_probs, all_labels, prob_dist_path)
     else:
+        create_detailed_confusion_matrix(all_labels, all_preds)
         prob_stats = analyze_probability_distribution(all_probs, all_labels)
-    
-    print(f"\n📊 PROBABILITY DISTRIBUTION:")
-    print(f"   Bonafide mean prob: {prob_stats['bonafide_mean_prob']:.3f} ± {prob_stats['bonafide_std_prob']:.3f}")
-    print(f"   Spoof mean prob: {prob_stats['spoof_mean_prob']:.3f} ± {prob_stats['spoof_std_prob']:.3f}")
-    
-    # 5. Additional Metrics
-    additional_metrics = calculate_additional_metrics(all_labels, all_probs)
-    print(f"\n📈 ADDITIONAL METRICS:")
-    print(f"   ROC-AUC: {additional_metrics['roc_auc']:.4f}")
-    print(f"   PR-AUC: {additional_metrics['pr_auc']:.4f}")
 
     # === Detailed Lists of Wrong Cases ===
     print(f"\n📝 DETAILED WRONG CASE INDICES:")
@@ -323,6 +557,11 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     wandb_metrics = {
         # Basic metrics
         "Accuracy": acc,
+        "Balanced_Accuracy": comp_metrics['balanced_accuracy'],
+        "Precision": comp_metrics['precision'],
+        "Recall": comp_metrics['recall'],
+        "F1_Score": comp_metrics['f1_score'],
+        "Matthews_Corrcoef": comp_metrics['matthews_corrcoef'],
         "True Positives": tp,
         "True Negatives": tn,
         "False Positives": fp,
@@ -331,8 +570,12 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         "EER_Threshold": threshold,
         
         # Additional metrics
-        "ROC_AUC": additional_metrics['roc_auc'],
-        "PR_AUC": additional_metrics['pr_auc'],
+        "ROC_AUC": comp_metrics['roc_auc'],
+        "PR_AUC": comp_metrics['pr_auc'],
+        "Optimal_Threshold": comp_metrics['optimal_threshold'],
+        
+        # Calibration metrics
+        "Expected_Calibration_Error": calibration['expected_calibration_error'],
         
         # Uncertainty metrics
         "Uncertain_Count": uncertainty_analysis['total_uncertain'],
@@ -350,11 +593,14 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         "FP_Avg_Prob": wrong_analysis['fp_avg_prob'],
         "FN_Avg_Prob": wrong_analysis['fn_avg_prob'],
         
-        # Probability distribution stats
-        "Bonafide_Mean_Prob": prob_stats['bonafide_mean_prob'],
-        "Bonafide_Std_Prob": prob_stats['bonafide_std_prob'],
-        "Spoof_Mean_Prob": prob_stats['spoof_mean_prob'],
-        "Spoof_Std_Prob": prob_stats['spoof_std_prob'],
+        # Class distribution metrics
+        "Bonafide_Count": class_dist['bonafide_count'],
+        "Spoof_Count": class_dist['spoof_count'],
+        "Bonafide_Mean_Prob": class_dist['bonafide_prob_stats']['mean'],
+        "Bonafide_Std_Prob": class_dist['bonafide_prob_stats']['std'],
+        "Spoof_Mean_Prob": class_dist['spoof_prob_stats']['mean'],
+        "Spoof_Std_Prob": class_dist['spoof_prob_stats']['std'],
+        "Class_Separation": abs(class_dist['spoof_prob_stats']['mean'] - class_dist['bonafide_prob_stats']['mean'])
     }
     
     wandb.log(wandb_metrics)
@@ -379,10 +625,13 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         "eer": eer, "threshold": threshold,
         
         # Enhanced analysis results
+        "comprehensive_metrics": comp_metrics,
+        "class_distribution": class_dist,
+        "calibration_analysis": calibration,
+        "threshold_analysis": threshold_analysis,
         "uncertainty_analysis": uncertainty_analysis,
         "wrong_analysis": wrong_analysis,
         "probability_stats": prob_stats,
-        "additional_metrics": additional_metrics,
         
         # Output directory
         "output_dir": output_dir if save_plots else None
