@@ -24,7 +24,7 @@ ADD_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms/ADD"  # Replace with yo
 FOR_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2seconds"
 ASVS_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms"
 BATCH_SIZE = 16
-WANDB_PROJECT_NAME = "AST100k-5Epochs-CrossEvaluation"
+WANDB_PROJECT_NAME = "Final-Evaluation"
 
 if __name__ == "__main__":
     print("Yo its me from benchmark")
