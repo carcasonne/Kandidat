@@ -3,6 +3,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import random
+from collections import defaultdict
 
 import torch
 import torch.nn.functional as F
@@ -26,7 +28,374 @@ import modules.utils as utils
 import modules.metrics as metrics
 
 
-def print_confusion_matrix(cm, class_names=['Bonafide', 'Spoof']):
+def extract_attention_weights(model, inputs, layer_name=None):
+    """
+    Extract attention weights from transformer models.
+    
+    Args:
+        model: The model (should be a transformer-based model)
+        inputs: Input tensor
+        layer_name: Specific layer to extract attention from (optional)
+    
+    Returns:
+        attention_weights: Attention weights tensor
+    """
+    attention_weights = []
+    
+    def hook_fn(module, input, output):
+        if hasattr(output, 'attentions') and output.attentions is not None:
+            # For models that return attention weights directly
+            attention_weights.append(output.attentions)
+        elif len(output) > 1 and torch.is_tensor(output[1]):
+            # For models where attention is the second output
+            attention_weights.append(output[1])
+    
+    # Register hooks for attention extraction
+    hooks = []
+    
+    # For AST (Audio Spectrogram Transformer) models
+    if hasattr(model, 'v') and hasattr(model.v, 'blocks'):
+        # Hook to the last transformer block
+        hook = model.v.blocks[-1].attn.register_forward_hook(hook_fn)
+        hooks.append(hook)
+    elif hasattr(model, 'encoder') and hasattr(model.encoder, 'layer'):
+        # For BERT-like models
+        hook = model.encoder.layer[-1].attention.self.register_forward_hook(hook_fn)
+        hooks.append(hook)
+    elif hasattr(model, 'transformer') and hasattr(model.transformer, 'layers'):
+        # For generic transformer models
+        hook = model.transformer.layers[-1].self_attn.register_forward_hook(hook_fn)
+        hooks.append(hook)
+    
+    try:
+        # Forward pass to extract attention
+        with torch.no_grad():
+            _ = model(inputs)
+        
+        # Clean up hooks
+        for hook in hooks:
+            hook.remove()
+        
+        if attention_weights:
+            return attention_weights[-1]  # Return the last captured attention
+        else:
+            return None
+            
+    except Exception as e:
+        # Clean up hooks in case of error
+        for hook in hooks:
+            hook.remove()
+        print(f"Warning: Could not extract attention weights: {e}")
+        return None
+
+
+def create_attention_heatmap(attention_weights, input_shape, save_path=None, title="Attention Heatmap"):
+    """
+    Create a heatmap visualization of attention weights.
+    
+    Args:
+        attention_weights: Attention weights tensor [batch, heads, seq_len, seq_len] or [batch, seq_len, seq_len]
+        input_shape: Original input shape for proper scaling
+        save_path: Path to save the heatmap
+        title: Title for the plot
+    """
+    if attention_weights is None:
+        print("No attention weights available for visualization")
+        return None
+    
+    # Handle different attention weight formats
+    if len(attention_weights.shape) == 4:
+        # [batch, heads, seq_len, seq_len] - average across heads
+        attention = attention_weights[0].mean(dim=0).cpu().numpy()
+    elif len(attention_weights.shape) == 3:
+        # [batch, seq_len, seq_len]
+        attention = attention_weights[0].cpu().numpy()
+    else:
+        print(f"Unexpected attention weight shape: {attention_weights.shape}")
+        return None
+    
+    # Create the heatmap
+    plt.figure(figsize=(10, 8))
+    
+    # Plot attention matrix
+    sns.heatmap(attention, cmap='Blues', cbar=True, square=True)
+    plt.title(f'{title}\nAttention Matrix ({attention.shape[0]}x{attention.shape[1]})')
+    plt.xlabel('Key Position')
+    plt.ylabel('Query Position')
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        return save_path
+    else:
+        plt.show()
+        return None
+
+
+def create_attention_rollout(attention_weights, input_length=None):
+    """
+    Create attention rollout visualization (cumulative attention across layers).
+    
+    Args:
+        attention_weights: List of attention weights from different layers
+        input_length: Length of input sequence
+    
+    Returns:
+        rollout_attention: Rolled out attention weights
+    """
+    if not isinstance(attention_weights, list):
+        attention_weights = [attention_weights]
+    
+    # Start with identity matrix
+    rollout = torch.eye(attention_weights[0].shape[-1])
+    
+    for attention in attention_weights:
+        if len(attention.shape) == 4:
+            # Average across batch and heads
+            avg_attention = attention[0].mean(dim=0)
+        else:
+            avg_attention = attention[0]
+        
+        # Add residual connection
+        avg_attention = avg_attention + torch.eye(avg_attention.shape[0])
+        
+        # Normalize
+        avg_attention = avg_attention / avg_attention.sum(dim=-1, keepdim=True)
+        
+        # Matrix multiplication for rollout
+        rollout = torch.matmul(avg_attention, rollout)
+    
+    return rollout
+
+
+def analyze_misclassified_attention(model, data_loader, wrong_indices, all_labels, all_preds, 
+                                  all_probs, is_AST, device, output_dir, num_samples=5):
+    """
+    Analyze attention patterns for misclassified samples.
+    
+    Args:
+        model: The trained model
+        data_loader: DataLoader containing the data
+        wrong_indices: Indices of misclassified samples
+        all_labels: True labels
+        all_preds: Predicted labels  
+        all_probs: Prediction probabilities
+        is_AST: Whether model is AST-based
+        device: Device to run on
+        output_dir: Directory to save visualizations
+        num_samples: Number of samples to visualize
+    
+    Returns:
+        Dictionary with attention analysis results
+    """
+    if not wrong_indices or len(wrong_indices) == 0:
+        print("No misclassified samples to analyze")
+        return {}
+    
+    print(f"\n🔍 Analyzing attention patterns for {min(num_samples, len(wrong_indices))} misclassified samples...")
+    
+    # Sample random misclassified indices
+    sample_indices = random.sample(wrong_indices, min(num_samples, len(wrong_indices)))
+    
+    # Create attention output directory
+    attention_dir = os.path.join(output_dir, "attention_maps")
+    os.makedirs(attention_dir, exist_ok=True)
+    
+    # Store data samples and their indices for later processing
+    sample_data = {}
+    current_idx = 0
+    
+    model.eval()
+    attention_results = {}
+    
+    with torch.no_grad():
+        for batch_idx, batch in enumerate(tqdm(data_loader, desc="Collecting samples for attention analysis")):
+            inputs, labels = utils.get_input_and_labels(is_AST, batch, device)
+            batch_size = inputs.shape[0]
+            
+            # Check if any of our target indices are in this batch
+            batch_start = current_idx
+            batch_end = current_idx + batch_size
+            
+            target_indices_in_batch = [idx for idx in sample_indices 
+                                     if batch_start <= idx < batch_end]
+            
+            if target_indices_in_batch:
+                # Extract attention for samples in this batch
+                for target_idx in target_indices_in_batch:
+                    local_idx = target_idx - batch_start  # Index within the current batch
+                    
+                    # Get single sample
+                    if len(inputs.shape) == 4:  # Image-like input [B, C, H, W]
+                        sample_input = inputs[local_idx:local_idx+1]
+                    elif len(inputs.shape) == 3:  # Sequence input [B, Seq, Features]  
+                        sample_input = inputs[local_idx:local_idx+1]
+                    else:  # Other formats
+                        sample_input = inputs[local_idx:local_idx+1]
+                    
+                    # Extract attention weights
+                    attention_weights = extract_attention_weights(model, sample_input)
+                    
+                    if attention_weights is not None:
+                        # Create attention visualization
+                        true_label = all_labels[target_idx]
+                        pred_label = all_preds[target_idx] 
+                        prob = all_probs[target_idx]
+                        
+                        # Determine error type
+                        if true_label == 0 and pred_label == 1:
+                            error_type = "False_Positive"
+                        elif true_label == 1 and pred_label == 0:
+                            error_type = "False_Negative"
+                        else:
+                            error_type = "Unknown"
+                        
+                        # Create filename
+                        filename = f"attention_{error_type}_idx{target_idx}_true{true_label}_pred{pred_label}_prob{prob:.3f}.png"
+                        save_path = os.path.join(attention_dir, filename)
+                        
+                        # Create title
+                        title = f"{error_type} (Index: {target_idx})\nTrue: {['Bonafide', 'Spoof'][true_label]}, Pred: {['Bonafide', 'Spoof'][pred_label]}, Prob: {prob:.3f}"
+                        
+                        # Generate attention heatmap
+                        heatmap_path = create_attention_heatmap(
+                            attention_weights, 
+                            sample_input.shape, 
+                            save_path, 
+                            title
+                        )
+                        
+                        # Store results
+                        attention_results[target_idx] = {
+                            'true_label': true_label,
+                            'pred_label': pred_label,
+                            'probability': prob,
+                            'error_type': error_type,
+                            'attention_shape': attention_weights.shape,
+                            'heatmap_path': heatmap_path,
+                            'input_shape': sample_input.shape
+                        }
+                        
+                        print(f"   ✅ Generated attention map for sample {target_idx} ({error_type})")
+            
+            current_idx += batch_size
+            
+            # Break early if we've processed all target samples
+            if len(attention_results) >= len(sample_indices):
+                break
+    
+    # Create summary visualization
+    if attention_results:
+        create_attention_summary_plot(attention_results, attention_dir)
+    
+    return attention_results
+
+
+def create_attention_summary_plot(attention_results, output_dir):
+    """
+    Create a summary plot showing statistics about attention patterns.
+    """
+    if not attention_results:
+        return
+    
+    # Collect statistics
+    error_types = [result['error_type'] for result in attention_results.values()]
+    probabilities = [result['probability'] for result in attention_results.values()]
+    
+    # Count error types
+    error_counts = defaultdict(int)
+    for error_type in error_types:
+        error_counts[error_type] += 1
+    
+    # Create summary plot
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Plot 1: Error type distribution
+    axes[0].bar(error_counts.keys(), error_counts.values(), color=['red', 'orange'])
+    axes[0].set_title('Distribution of Analyzed Error Types')
+    axes[0].set_ylabel('Count')
+    axes[0].tick_params(axis='x', rotation=45)
+    
+    # Plot 2: Probability distribution of misclassified samples
+    axes[1].hist(probabilities, bins=10, alpha=0.7, color='purple', edgecolor='black')
+    axes[1].axvline(x=0.5, color='red', linestyle='--', label='Decision Threshold')
+    axes[1].set_title('Probability Distribution of Misclassified Samples')
+    axes[1].set_xlabel('Prediction Probability')
+    axes[1].set_ylabel('Count')
+    axes[1].legend()
+    
+    plt.tight_layout()
+    summary_path = os.path.join(output_dir, 'attention_analysis_summary.png')
+    plt.savefig(summary_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"   📊 Attention analysis summary saved to {summary_path}")
+
+
+def visualize_attention_patterns(attention_weights, save_path=None):
+    """
+    Create multiple visualizations of attention patterns.
+    """
+    if attention_weights is None:
+        return None
+    
+    # Handle different attention formats
+    if len(attention_weights.shape) == 4:
+        # [batch, heads, seq_len, seq_len]
+        attention = attention_weights[0].cpu().numpy()  # Take first sample
+        num_heads = attention.shape[0]
+        
+        # Create subplot for each attention head
+        fig, axes = plt.subplots(2, min(4, num_heads), figsize=(16, 8))
+        if num_heads == 1:
+            axes = [axes]
+        elif num_heads <= 4:
+            axes = axes.flatten()
+        
+        for head_idx in range(min(num_heads, 8)):  # Limit to 8 heads max
+            row = head_idx // 4
+            col = head_idx % 4
+            
+            if num_heads <= 4:
+                ax = axes[head_idx] if num_heads > 1 else axes
+            else:
+                ax = axes[row, col]
+            
+            sns.heatmap(attention[head_idx], ax=ax, cmap='Blues', cbar=True)
+            ax.set_title(f'Head {head_idx + 1}')
+            ax.set_xlabel('Key Position')
+            ax.set_ylabel('Query Position')
+        
+        # Remove empty subplots
+        if num_heads < 8:
+            for idx in range(num_heads, min(8, len(axes.flatten()) if hasattr(axes, 'flatten') else len(axes))):
+                if num_heads <= 4:
+                    if idx < len(axes):
+                        fig.delaxes(axes[idx])
+                else:
+                    row = idx // 4
+                    col = idx % 4
+                    if row < axes.shape[0] and col < axes.shape[1]:
+                        fig.delaxes(axes[row, col])
+        
+        plt.tight_layout()
+        
+    else:
+        # Single attention matrix
+        plt.figure(figsize=(10, 8))
+        attention = attention_weights[0].cpu().numpy() if len(attention_weights.shape) == 3 else attention_weights.cpu().numpy()
+        sns.heatmap(attention, cmap='Blues', cbar=True)
+        plt.title('Attention Pattern')
+        plt.xlabel('Key Position')
+        plt.ylabel('Query Position')
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        return save_path
+    else:
+        plt.show()
+        return None
     """
     Print a nicely formatted confusion matrix in the terminal.
     """
@@ -398,9 +767,14 @@ def calculate_additional_metrics(all_labels, all_probs):
 
 
 def benchmark(model, data_loader, flavor_text, is_AST, device, project_name, 
-              save_plots=True, uncertainty_threshold=0.1):
+              save_plots=True, uncertainty_threshold=0.1, generate_attention_maps=True, 
+              num_attention_samples=5):
     """
-    Enhanced benchmarking function with comprehensive error analysis.
+    Enhanced benchmarking function with comprehensive error analysis and attention visualization.
+    
+    Args:
+        generate_attention_maps: Whether to generate attention maps for misclassified samples
+        num_attention_samples: Number of misclassified samples to analyze for attention
     """
     print(f"\n🚀 Starting enhanced benchmark: {flavor_text}")
     
@@ -632,6 +1006,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         "uncertainty_analysis": uncertainty_analysis,
         "wrong_analysis": wrong_analysis,
         "probability_stats": prob_stats,
+        "attention_analysis": attention_results,
         
         # Output directory
         "output_dir": output_dir if save_plots else None

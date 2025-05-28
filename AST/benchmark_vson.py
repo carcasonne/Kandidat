@@ -1,5 +1,4 @@
 import torch
-from AST.wandb_login import login
 from Datasets import (
     ADDdataset,
     ADDdatasetPretrain,
@@ -14,7 +13,7 @@ from torchvision import transforms
 
 import modules.benchmark as benchmark
 import modules.models as models
-
+from wandb_login import login
 
 login()
 
