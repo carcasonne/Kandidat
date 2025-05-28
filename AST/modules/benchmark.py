@@ -131,6 +131,44 @@ def create_attention_heatmap(attention_weights, input_shape, save_path=None, tit
         plt.show()
         return None
 
+def print_confusion_matrix(cm, class_names=['Bonafide', 'Spoof']):
+    """
+    Print a nicely formatted confusion matrix in the terminal.
+    """
+    print("\n" + "="*40)
+    print("📊 CONFUSION MATRIX")
+    print("="*40)
+    
+    # Calculate percentages
+    cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
+    
+    # Print header
+    print(f"{'':>12} {'Predicted':>20}")
+    print(f"{'Actual':>12} {class_names[0]:>10} {class_names[1]:>10} {'Total':>8}")
+    print("-" * 45)
+    
+    # Print rows
+    for i, class_name in enumerate(class_names):
+        row_total = cm[i].sum()
+        print(f"{class_name:>10} {cm[i][0]:>8} ({cm_percent[i][0]:>5.1f}%) "
+              f"{cm[i][1]:>8} ({cm_percent[i][1]:>5.1f}%) {row_total:>6}")
+    
+    # Print totals
+    col_totals = cm.sum(axis=0)
+    total = cm.sum()
+    print("-" * 45)
+    print(f"{'Total':>10} {col_totals[0]:>10} {col_totals[1]:>10} {total:>6}")
+    
+    # Print key metrics derived from confusion matrix
+    tn, fp, fn, tp = cm.ravel()
+    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+    
+    print(f"\n📈 Key Rates:")
+    print(f"   True Positive Rate (Sensitivity/Recall): {sensitivity:.3f}")
+    print(f"   True Negative Rate (Specificity): {specificity:.3f}")
+    print(f"   False Positive Rate: {fp/(fp+tn):.3f}")
+    print(f"   False Negative Rate: {fn/(fn+tp):.3f}")
 
 def create_attention_rollout(attention_weights, input_length=None):
     """
