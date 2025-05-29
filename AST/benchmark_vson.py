@@ -39,7 +39,7 @@ if __name__ == "__main__":
         finetuned_model_path=AST_MODEL_CHECKPOINT,
         device="cuda",
     )
-    Pretrain_model = models.load_pretrained_model(saved_model_path=PRETRAIN_MODEL_CHECKPOINT, device=DEVICE)
+    Pretrain_model = models.load_pretrained_model_attention(saved_model_path=PRETRAIN_MODEL_CHECKPOINT, device=DEVICE)
     base_AST_model = models.load_base_ast_model(device=DEVICE)
 
     samples = {"bonafide": 100000, "fake": 100000}
