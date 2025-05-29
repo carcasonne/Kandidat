@@ -29,6 +29,7 @@ FOR_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms/FoR/for-2sec/for-2secon
 ASVS_DATASET_PATH = "/home/alsk/Kandidat/AST/spectrograms"
 BATCH_SIZE = 16
 WANDB_PROJECT_NAME = "Final-Evaluation"
+FIGURE_FOLDER = "benchmark-maps"
 
 if __name__ == "__main__":
     print("Yo its me from benchmark")
@@ -110,13 +111,12 @@ if __name__ == "__main__":
     pre_asv_dataset_100k, _, _  = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
 
 
-    run_name1 = "AST_benchmark_FoR"
-    benchmark.benchmark(AST_model, for_test_loader, run_name1, True, DEVICE, WANDB_PROJECT_NAME)
-    attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR")
+    # run_name1 = "AST_benchmark_FoR"
+    # benchmark.benchmark(AST_model, for_test_loader, run_name1, True, DEVICE, WANDB_PROJECT_NAME)
     
     # run_name = "AST_benchmark_ADD"
     # benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE, WANDB_PROJECT_NAME)
-    
+
     # run_name_1 = "AST_benchmark_ASV_100K"
     # benchmark.benchmark(AST_model, asvs_test_loader_100k, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
 
@@ -134,3 +134,8 @@ if __name__ == "__main__":
 
     # run_name3 = "Pretrain_benchmark_FoR"
     # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE, WANDB_PROJECT_NAME)
+    
+    attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR", FIGURE_FOLDER)
+    attention_map.generate_enhanced_attention_maps(AST_model, add_test_loader, 5, "AST model on ADD", FIGURE_FOLDER)
+    attention_map.generate_enhanced_attention_maps(Pretrain_model, pre_add_test_loader, 5, "Pretrained model on ADD", FIGURE_FOLDER)
+    attention_map.generate_enhanced_attention_maps(Pretrain_model, pre_for_test_loader, 5, "Pretrained model on FoR", FIGURE_FOLDER)
