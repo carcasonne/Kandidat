@@ -136,9 +136,9 @@ if __name__ == "__main__":
     # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE, WANDB_PROJECT_NAME)
     
     print("ast on for")
-    attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR", FIGURE_FOLDER)
+    # attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR", FIGURE_FOLDER)
     print("ast on add")
-    attention_map.generate_enhanced_attention_maps(AST_model, add_test_loader, 5, "AST model on ADD", FIGURE_FOLDER)
+    # attention_map.generate_enhanced_attention_maps(AST_model, add_test_loader, 5, "AST model on ADD", FIGURE_FOLDER)
     print("pretrained on for")
     attention_map.generate_enhanced_attention_maps_pretrain(Pretrain_model, pre_add_test_loader, 5, "Pretrained model on ADD", FIGURE_FOLDER)
     print("pretrained on add")
