@@ -415,7 +415,6 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     all_preds = []
     all_labels = []
     all_probs = []  # Store raw probabilities for EER calculation
-    all_inputs = [] # Store inputs for attention map generation
     model.eval()
 
     with torch.no_grad():
@@ -439,7 +438,6 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
             all_probs.extend(spoof_probs.cpu().numpy())
-            all_inputs.extend(inputs.cpu())
 
     print(f"✅ Processed {len(all_labels)} samples")
 
@@ -545,33 +543,6 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     print(f"   False Positive indices (first 20): {wrong_analysis['false_positive_indices'][:20]}")
     print(f"   False Negative indices (first 20): {wrong_analysis['false_negative_indices'][:20]}")
     print(f"   Most uncertain indices (first 20): {uncertainty_analysis['uncertain_indices'][:20]}")
-
-
-        # === Attention Map Generation ===
-    correct_indices = [i for i, (p, l) in enumerate(zip(all_preds, all_labels)) if p == l][:num_attention_samples]
-    wrong_indices = [i for i, (p, l) in enumerate(zip(all_preds, all_labels)) if p != l][:num_attention_samples]
-
-    attn_dir = os.path.join(output_dir, "attention_maps")
-    os.makedirs(attn_dir, exist_ok=True)
-
-    print("\n🧠 Generating attention maps for correct predictions...")
-    for idx in correct_indices:
-        input_tensor = all_inputs[idx].unsqueeze(0).to(device)
-        label = all_labels[idx]
-        if is_AST:
-            attention_map.generate_enhanced_attention_maps(model, input_tensor, attn_dir, idx, label)
-        else:
-            attention_map.generate_enhanced_attention_maps_pretrained(model, input_tensor, attn_dir, idx, label)
-
-    print("\n🧠 Generating attention maps for incorrect predictions...")
-    for idx in wrong_indices:
-        input_tensor = all_inputs[idx].unsqueeze(0).to(device)
-        label = all_labels[idx]
-        if is_AST:
-            attention_map.generate_enhanced_attention_maps(model, input_tensor, attn_dir, idx, label)
-        else:
-            attention_map.generate_enhanced_attention_maps_pretrained(model, input_tensor, attn_dir, idx, label)
-
 
     # === Weights & Biases Logging ===
     wandb.login()

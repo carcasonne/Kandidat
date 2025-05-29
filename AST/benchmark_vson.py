@@ -13,6 +13,7 @@ from torchvision import transforms
 
 import modules.benchmark as benchmark
 import modules.models as models
+import modules.attention_map as attention_map 
 from wandb_login import login
 
 login()
@@ -111,9 +112,10 @@ if __name__ == "__main__":
 
     run_name1 = "AST_benchmark_FoR"
     benchmark.benchmark(AST_model, for_test_loader, run_name1, True, DEVICE, WANDB_PROJECT_NAME)
+    attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR")
     
-    run_name = "AST_benchmark_ADD"
-    benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE, WANDB_PROJECT_NAME)
+    # run_name = "AST_benchmark_ADD"
+    # benchmark.benchmark(AST_model, add_test_loader, run_name, True, DEVICE, WANDB_PROJECT_NAME)
     
     # run_name_1 = "AST_benchmark_ASV_100K"
     # benchmark.benchmark(AST_model, asvs_test_loader_100k, run_name_1, True, DEVICE, WANDB_PROJECT_NAME)
@@ -127,8 +129,8 @@ if __name__ == "__main__":
     # run_name2 = "Pretrain_benchmark_ASV_100k"
     # benchmark.benchmark(Pretrain_model, pre_asv_dataset_100k, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
 
-    run_name2 = "Pretrain_benchmark_ADD"
-    benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE, WANDB_PROJECT_NAME)
+    # run_name2 = "Pretrain_benchmark_ADD"
+    # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE, WANDB_PROJECT_NAME)
 
-    run_name3 = "Pretrain_benchmark_FoR"
-    benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE, WANDB_PROJECT_NAME)
+    # run_name3 = "Pretrain_benchmark_FoR"
+    # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE, WANDB_PROJECT_NAME)
