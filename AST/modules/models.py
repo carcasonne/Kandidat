@@ -111,7 +111,7 @@ def load_pretrained_model_attention(saved_model_path=None, device='cuda'):
 
     if saved_model_path is not None:
         # Load saved state dict
-        model.vit.load_state_dict(torch.load(saved_model_path, map_location=device))
+        model.load_state_dict(torch.load(saved_model_path, map_location=device))
     model.vit.to(device)
 
     return model

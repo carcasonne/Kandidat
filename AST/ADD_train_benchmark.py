@@ -26,6 +26,7 @@ import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from torchvision import datasets, transforms
 
+from modules.inference import run_inference_pretrain
 from modules.inference import run_inference, print_inference_results
 from modules.models import load_pretrained_model, load_pretrained_model_attention
 from Datasets import *
@@ -677,7 +678,7 @@ def pre_train_asv():
     generate_enhanced_attention_maps_pretrain(model, add_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
 
 
-def test_single_clip(save_folder):
+def test_single_clip(save_folder, prefix):
     embedding_size = 300
     AST_MODEL_CHECKPOINT = "checkpoints/asv_100k_from_hpc"
     AST_model = load_modified_ast_model(
@@ -687,10 +688,31 @@ def test_single_clip(save_folder):
     )
 
     # Load dataset
-    inference_dataset = InferenceSpectrogramDataset(save_folder, target_frames=300)
+    inference_dataset = InferenceSpectrogramDataset(save_folder, prefix, target_frames=300, label=1)
 
     # Run inference
     results = run_inference(AST_model, inference_dataset, device="cuda", save_results=True )
+    print_inference_results(results)
+
+def test_single_clip_pretrain(save_folder, prefix):
+    embedding_size = 300
+    # Define Data Transforms
+    transform = transforms.Compose([
+        StretchMelCropTime(224, 224),
+        transforms.Normalize(mean=[0.485], std=[0.229]),
+    ])
+
+    MODEL_CHECKPOINT = "checkpoints/ViT"
+    model = load_pretrained_model_attention(
+        saved_model_path=MODEL_CHECKPOINT,
+        device="cuda"
+    )
+
+    # Load dataset
+    inference_dataset = InferenceSpectrogramDatasetPretrain(save_folder, prefix, target_frames=300, transform=transform, label=1)
+
+    # Run inference
+    results = run_inference_pretrain(model, inference_dataset, device="cuda", save_results=True )
     print_inference_results(results)
 
 def count_parameters(model):
