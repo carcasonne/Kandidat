@@ -84,3 +84,10 @@ def split_spectrogram_file(
 
         if verbose:
             print(f"Saved chunk {i+1}/{num_chunks} to {output_path}")
+
+
+
+def print_attention_file_paths(results):
+    attention_results = results['attention_analysis']
+    for idx, result in attention_results.items():
+        print(f"Sample {idx}: {result['error_type']} - Path: {result['heatmap_path']}")
