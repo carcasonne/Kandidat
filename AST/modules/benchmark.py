@@ -164,7 +164,7 @@ def print_confusion_matrix(cm, class_names=['Bonafide', 'Spoof']):
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
     
-    print(f"\n📈 Key Rates:")
+    print("\n📈 Key Rates:")
     print(f"   True Positive Rate (Sensitivity/Recall): {sensitivity:.3f}")
     print(f"   True Negative Rate (Specificity): {specificity:.3f}")
     print(f"   False Positive Rate: {fp/(fp+tn):.3f}")
@@ -434,44 +434,6 @@ def visualize_attention_patterns(attention_weights, save_path=None):
     else:
         plt.show()
         return None
-    """
-    Print a nicely formatted confusion matrix in the terminal.
-    """
-    print("\n" + "="*40)
-    print("📊 CONFUSION MATRIX")
-    print("="*40)
-    
-    # Calculate percentages
-    cm_percent = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100
-    
-    # Print header
-    print(f"{'':>12} {'Predicted':>20}")
-    print(f"{'Actual':>12} {class_names[0]:>10} {class_names[1]:>10} {'Total':>8}")
-    print("-" * 45)
-    
-    # Print rows
-    for i, class_name in enumerate(class_names):
-        row_total = cm[i].sum()
-        print(f"{class_name:>10} {cm[i][0]:>8} ({cm_percent[i][0]:>5.1f}%) "
-              f"{cm[i][1]:>8} ({cm_percent[i][1]:>5.1f}%) {row_total:>6}")
-    
-    # Print totals
-    col_totals = cm.sum(axis=0)
-    total = cm.sum()
-    print("-" * 45)
-    print(f"{'Total':>10} {col_totals[0]:>10} {col_totals[1]:>10} {total:>6}")
-    
-    # Print key metrics derived from confusion matrix
-    tn, fp, fn, tp = cm.ravel()
-    sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
-    
-    print(f"\n📈 Key Rates:")
-    print(f"   True Positive Rate (Sensitivity/Recall): {sensitivity:.3f}")
-    print(f"   True Negative Rate (Specificity): {specificity:.3f}")
-    print(f"   False Positive Rate: {fp/(fp+tn):.3f}")
-    print(f"   False Negative Rate: {fn/(fn+tp):.3f}")
-
 
 def calculate_comprehensive_metrics(all_labels, all_preds, all_probs):
     """
@@ -875,7 +837,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     
     # 1. Comprehensive metrics
     comp_metrics = calculate_comprehensive_metrics(all_labels, all_preds, all_probs)
-    print(f"\n📊 COMPREHENSIVE METRICS:")
+    print("\n📊 COMPREHENSIVE METRICS:")
     print(f"   Accuracy: {comp_metrics['accuracy']:.4f}")
     print(f"   Balanced Accuracy: {comp_metrics['balanced_accuracy']:.4f}")
     print(f"   Precision: {comp_metrics['precision']:.4f}")
@@ -888,12 +850,12 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     
     # 2. Class distribution analysis
     class_dist = analyze_class_distribution(all_labels, all_probs)
-    print(f"\n🎯 CLASS DISTRIBUTION:")
+    print("\n🎯 CLASS DISTRIBUTION:")
     print(f"   Bonafide samples: {class_dist['bonafide_count']} ({class_dist['bonafide_percentage']:.1f}%)")
     print(f"   Spoof samples: {class_dist['spoof_count']} ({class_dist['spoof_percentage']:.1f}%)")
     print(f"   Dataset balance ratio: {class_dist['bonafide_count']/class_dist['spoof_count']:.2f}:1")
     
-    print(f"\n📈 PROBABILITY STATISTICS BY CLASS:")
+    print("\n📈 PROBABILITY STATISTICS BY CLASS:")
     b_stats = class_dist['bonafide_prob_stats']
     s_stats = class_dist['spoof_prob_stats']
     print(f"   Bonafide - Mean: {b_stats['mean']:.3f}, Std: {b_stats['std']:.3f}, Median: {b_stats['median']:.3f}")
@@ -902,7 +864,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     
     # 3. Model calibration analysis
     calibration = analyze_prediction_calibration(all_labels, all_probs)
-    print(f"\n🎚️ MODEL CALIBRATION:")
+    print("\n🎚️ MODEL CALIBRATION:")
     print(f"   Expected Calibration Error (ECE): {calibration['expected_calibration_error']:.4f}")
     print("   Calibration by confidence bins:")
     for bin_info in calibration['calibration_bins']:
@@ -912,7 +874,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     
     # 4. Threshold analysis
     threshold_analysis = analyze_threshold_performance(all_labels, all_probs)
-    print(f"\n⚖️ THRESHOLD PERFORMANCE ANALYSIS:")
+    print("\n⚖️ THRESHOLD PERFORMANCE ANALYSIS:")
     print("   Threshold | Accuracy | Precision | Recall | F1-Score")
     print("   " + "-"*50)
     for result in threshold_analysis:
@@ -922,7 +884,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     uncertainty_analysis = analyze_model_uncertainty(
         all_probs, all_labels, all_preds, uncertainty_threshold
     )
-    print(f"\n🎯 UNCERTAINTY ANALYSIS:")
+    print("\n🎯 UNCERTAINTY ANALYSIS:")
     print(f"   Uncertain predictions: {uncertainty_analysis['total_uncertain']} ({uncertainty_analysis['uncertain_percentage']:.2f}%)")
     print(f"   Accuracy on uncertain samples: {uncertainty_analysis['uncertain_accuracy']:.3f}")
     print(f"   Accuracy on confident samples: {uncertainty_analysis['confident_accuracy']:.3f}")
@@ -930,13 +892,52 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     
     # 6. Wrong Predictions Analysis
     wrong_analysis = analyze_wrong_predictions(all_labels, all_preds, all_probs)
-    print(f"\n❌ WRONG PREDICTIONS ANALYSIS:")
+    print("\n❌ WRONG PREDICTIONS ANALYSIS:")
     print(f"   Total wrong: {wrong_analysis['total_wrong']} ({wrong_analysis['wrong_percentage']:.2f}%)")
     print(f"   False Positives (bonafide → spoof): {wrong_analysis['fp_count']}")
     print(f"   False Negatives (spoof → bonafide): {wrong_analysis['fn_count']}")
     print(f"   Average confidence of wrong predictions: {wrong_analysis['wrong_avg_confidence']:.3f}")
     print(f"   Average spoof prob for FPs: {wrong_analysis['fp_avg_prob']:.3f}")
     print(f"   Average spoof prob for FNs: {wrong_analysis['fn_avg_prob']:.3f}")
+    
+    # === ATTENTION ANALYSIS (NEW) ===
+    attention_results = {}  # Initialize as empty dict
+    
+    if generate_attention_maps and wrong_analysis['total_wrong'] > 0:
+        print("\n🔍 ATTENTION ANALYSIS:")
+        print(f"   Generating attention maps for {min(num_attention_samples, wrong_analysis['total_wrong'])} misclassified samples...")
+        
+        try:
+            attention_results = analyze_misclassified_attention(
+                model=model,
+                data_loader=data_loader,
+                wrong_indices=wrong_analysis['wrong_indices'],
+                all_labels=all_labels,
+                all_preds=all_preds,
+                all_probs=all_probs,
+                is_AST=is_AST,
+                device=device,
+                output_dir=output_dir if save_plots else "temp_attention",
+                num_samples=num_attention_samples
+            )
+            
+            if attention_results:
+                print(f"   ✅ Generated {len(attention_results)} attention visualizations")
+                # Summary of attention analysis
+                error_types = [result['error_type'] for result in attention_results.values()]
+                fp_count = error_types.count('False_Positive')
+                fn_count = error_types.count('False_Negative')
+                print(f"   📊 Attention maps created: {fp_count} False Positives, {fn_count} False Negatives")
+            else:
+                print("   ⚠️ No attention maps could be generated")
+                
+        except Exception as e:
+            print(f"   ❌ Error generating attention maps: {e}")
+            attention_results = {}
+    elif generate_attention_maps and wrong_analysis['total_wrong'] == 0:
+        print("\n🎯 ATTENTION ANALYSIS: No misclassified samples found - perfect accuracy!")
+    elif not generate_attention_maps:
+        print("\n🔍 ATTENTION ANALYSIS: Skipped (generate_attention_maps=False)")
     
     # 7. Visualizations (optional)    
     if save_plots:
@@ -950,7 +951,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         prob_stats = analyze_probability_distribution(all_probs, all_labels)
 
     # === Detailed Lists of Wrong Cases ===
-    print(f"\n📝 DETAILED WRONG CASE INDICES:")
+    print("\n📝 DETAILED WRONG CASE INDICES:")
     print(f"   False Positive indices (first 20): {wrong_analysis['false_positive_indices'][:20]}")
     print(f"   False Negative indices (first 20): {wrong_analysis['false_negative_indices'][:20]}")
     print(f"   Most uncertain indices (first 20): {uncertainty_analysis['uncertain_indices'][:20]}")
@@ -1012,18 +1013,36 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         "Bonafide_Std_Prob": class_dist['bonafide_prob_stats']['std'],
         "Spoof_Mean_Prob": class_dist['spoof_prob_stats']['mean'],
         "Spoof_Std_Prob": class_dist['spoof_prob_stats']['std'],
-        "Class_Separation": abs(class_dist['spoof_prob_stats']['mean'] - class_dist['bonafide_prob_stats']['mean'])
+        "Class_Separation": abs(class_dist['spoof_prob_stats']['mean'] - class_dist['bonafide_prob_stats']['mean']),
+        
+        # Attention analysis metrics
+        "Attention_Maps_Generated": len(attention_results) if attention_results else 0,
     }
+    
+    # Add attention-specific metrics if available
+    if attention_results:
+        error_types = [result['error_type'] for result in attention_results.values()]
+        wandb_metrics.update({
+            "Attention_FP_Count": error_types.count('False_Positive'),
+            "Attention_FN_Count": error_types.count('False_Negative'),
+        })
     
     wandb.log(wandb_metrics)
     
     # Log plots to wandb if they exist
     if save_plots:
         try:
-            wandb.log({
+            wandb_images = {
                 "confusion_matrix": wandb.Image(os.path.join(output_dir, "confusion_matrix.png")),
                 "probability_distribution": wandb.Image(os.path.join(output_dir, "probability_distribution.png"))
-            })
+            }
+            
+            # Log attention summary if it exists
+            attention_summary_path = os.path.join(output_dir, "attention_maps", "attention_analysis_summary.png")
+            if os.path.exists(attention_summary_path):
+                wandb_images["attention_analysis_summary"] = wandb.Image(attention_summary_path)
+            
+            wandb.log(wandb_images)
         except Exception as e:
             print(f"Warning: Could not log images to wandb: {e}")
 
@@ -1051,5 +1070,8 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
     }
     
     print(f"\n✅ Enhanced benchmark completed! Results {'saved to ' + output_dir if save_plots else 'generated'}")
+
+    print("Printing paths to attention maps")
+    utils.print_attention_file_paths(results)
     
     return results
