@@ -559,7 +559,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         input_tensor = all_inputs[idx].unsqueeze(0).to(device)
         label = all_labels[idx]
         if is_AST:
-            attention_map.generate_enhanced_attention_maps_AST(model, input_tensor, attn_dir, idx, label)
+            attention_map.generate_enhanced_attention_maps(model, input_tensor, attn_dir, idx, label)
         else:
             attention_map.generate_enhanced_attention_maps_pretrained(model, input_tensor, attn_dir, idx, label)
 
@@ -568,7 +568,7 @@ def benchmark(model, data_loader, flavor_text, is_AST, device, project_name,
         input_tensor = all_inputs[idx].unsqueeze(0).to(device)
         label = all_labels[idx]
         if is_AST:
-            attention_map.generate_enhanced_attention_maps_AST(model, input_tensor, attn_dir, idx, label)
+            attention_map.generate_enhanced_attention_maps(model, input_tensor, attn_dir, idx, label)
         else:
             attention_map.generate_enhanced_attention_maps_pretrained(model, input_tensor, attn_dir, idx, label)
 
