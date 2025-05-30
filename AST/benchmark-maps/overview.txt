@@ -1,0 +1,33 @@
+Bonus: deepfake when bonafide, and the clip is padded a lot: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_1_label_0.png
+
+Noticing: When the clip is padded, the model makes some weird behaviors. Compare:
+- https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_5_label_1.png
+- https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_6_label_1.png
+
+
+AST on ADD:
+- Deepfake, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_6_label_1.png
+- Deepfake, predicted bonafide: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_9_label_1.png
+- Bonafide, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_0_label_0.png
+- Bonafide, predicted bonafide: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20ADD_2_label_0.png
+
+
+AST on FoR:
+- Deepfake, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20FoR_7_label_1.png
+- Deepfake, predicted bonafide: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20FoR_6_label_1.png
+- Bonafide, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_AST%20model%20on%20FoR_0_label_0.png
+- Bonafide, predicted bonafide: none
+
+
+Pretrained on ADD:
+- Deepfake, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_Pretrained%20model%20on%20ADD_5_label_1.png
+- Deepfake, predicted bonafide: none
+- Bonafide, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_Pretrained%20model%20on%20ADD_0_label_0.png
+- Bonafide, predicted bonafide: none
+
+
+Pretrained on FoR:
+- Deepfake, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_Pretrained%20model%20on%20FoR_5_label_1.png
+- Deepfake, predicted bonafide: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_Pretrained%20model%20on%20FoR_8_label_1.png
+- Bonafide, predicted deepfake: https://github.com/carcasonne/Kandidat/blob/main/AST/benchmark-maps/attention_visualization_Pretrained%20model%20on%20FoR_0_label_0.png
+- Bonafide, predicted bonafide: none
