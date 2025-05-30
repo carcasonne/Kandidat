@@ -109,6 +109,7 @@ if __name__ == "__main__":
     )
 
     pre_asv_dataset_100k, _, _  = load_ASV_dataset(ASVS_DATASET_PATH, samples, False, split=None, transform=transform)
+    pre_asv_dataset_complete, _, _  = load_ASV_dataset(ASVS_DATASET_PATH, asv_samples, False, split=None, transform=transform)
 
 
     # run_name1 = "AST_benchmark_FoR"
@@ -126,8 +127,11 @@ if __name__ == "__main__":
     # run_name_2 = "Sanity_check_base"
     # benchmark.benchmark(base_AST_model, asvs_test_loader, run_name_2, True, DEVICE, WANDB_PROJECT_NAME)
 
-    # run_name2 = "Pretrain_benchmark_ASV_100k"
-    # benchmark.benchmark(Pretrain_model, pre_asv_dataset_100k, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
+    run_name2 = "Pretrain_benchmark_ASV_100k"
+    benchmark.benchmark(Pretrain_model, pre_asv_dataset_100k, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
+
+    run_name2 = "Pretrain_benchmark_ASV_complete"
+    benchmark.benchmark(Pretrain_model, pre_asv_dataset_complete, run_name2, is_AST=False, device=DEVICE, project_name=WANDB_PROJECT_NAME)
 
     # run_name2 = "Pretrain_benchmark_ADD"
     # benchmark.benchmark(Pretrain_model, pre_add_test_loader, run_name2, False, DEVICE, WANDB_PROJECT_NAME)
@@ -135,12 +139,12 @@ if __name__ == "__main__":
     # run_name3 = "Pretrain_benchmark_FoR"
     # benchmark.benchmark(Pretrain_model, pre_for_test_loader, run_name3, False, DEVICE, WANDB_PROJECT_NAME)
     
-    print("ast on for")
-    # attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR", FIGURE_FOLDER)
-    print("ast on add")
-    # attention_map.generate_enhanced_attention_maps(AST_model, add_test_loader, 5, "AST model on ADD", FIGURE_FOLDER)
-    print("pretrained on for")
-    attention_map.generate_enhanced_attention_maps_pretrain(Pretrain_model, pre_add_test_loader, 5, "Pretrained model on ADD", FIGURE_FOLDER)
-    print("pretrained on add")
-    attention_map.generate_enhanced_attention_maps_pretrain(Pretrain_model, pre_for_test_loader, 5, "Pretrained model on FoR", FIGURE_FOLDER)
-    print("done")
+    # print("ast on for")
+    # # attention_map.generate_enhanced_attention_maps(AST_model, for_test_loader, 5, "AST model on FoR", FIGURE_FOLDER)
+    # print("ast on add")
+    # # attention_map.generate_enhanced_attention_maps(AST_model, add_test_loader, 5, "AST model on ADD", FIGURE_FOLDER)
+    # print("pretrained on for")
+    # attention_map.generate_enhanced_attention_maps_pretrain(Pretrain_model, pre_add_test_loader, 5, "Pretrained model on ADD", FIGURE_FOLDER)
+    # print("pretrained on add")
+    # attention_map.generate_enhanced_attention_maps_pretrain(Pretrain_model, pre_for_test_loader, 5, "Pretrained model on FoR", FIGURE_FOLDER)
+    # print("done")
