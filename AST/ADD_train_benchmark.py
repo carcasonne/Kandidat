@@ -70,9 +70,11 @@ def setup_pretrain_model(device='cuda'):
     for param in model.head.parameters():
         param.requires_grad = True  # Unfreeze the classifier
 
-    # Unfreeze the layer before the head (typically the final transformer block)
+    # Unfreeze last two layers before the head (typically the final transformer block)
     # In ViT, this is usually the last block in model.blocks
     for param in model.blocks[-1].parameters():
+        param.requires_grad = True
+    for param in model.blocks[-2].parameters():
         param.requires_grad = True
     model.to(device)
 
