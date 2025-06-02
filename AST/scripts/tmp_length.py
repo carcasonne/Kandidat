@@ -63,7 +63,7 @@ dataset3_path = r"C:\Users\Askou\PycharmProjects\KIREPRO1PE\spectrograms\FoR\for
 
 # Dataset 1: fake + genuine
 widths1 = collect_class_widths(dataset1_path, ['fake', 'genuine'])
-plot_boxplot(widths1, "ADD", "box_plots/add_boxplot.png")
+plot_boxplot(widths1, "ADD", "../box_plots/add_boxplot.png")
 
 # Dataset 2: fake + real
 widths2 = collect_class_widths(dataset2_path, ['fake', 'real'])

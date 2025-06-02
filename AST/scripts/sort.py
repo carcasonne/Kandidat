@@ -2,8 +2,8 @@ import os
 import shutil
 
 # Set your working directory here
-fake_key_file = os.path.join("../keys/fake")
-bonafide_key_file = os.path.join("../keys/bonafide")
+fake_key_file = os.path.join("../../keys/fake")
+bonafide_key_file = os.path.join("../../keys/bonafide")
 
 # Read keys
 
@@ -18,9 +18,9 @@ bonafide_files = load_keys(bonafide_key_file)
 
 
 # Create destination directories
-fake_dir = os.path.join("spectrograms/ASVSpoof/fake")
+fake_dir = os.path.join("../spectrograms/ASVSpoof/fake")
 working_dir = fake_dir
-bonafide_dir = os.path.join("spectrograms/ASVSpoof/bonafide")
+bonafide_dir = os.path.join("../spectrograms/ASVSpoof/bonafide")
 os.makedirs(fake_dir, exist_ok=True)
 os.makedirs(bonafide_dir, exist_ok=True)
 
