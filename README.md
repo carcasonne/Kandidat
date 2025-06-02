@@ -16,11 +16,15 @@ spectrograms/
 ├── ASVSpoof/
 │   ├── bonafide/
 │   └── fake/
-├── fake/
 ├── FoR/
 │   └── for-2sec/
 │       └── for-2seconds/
 │           ├── Testing/
+|               └── Fake/
+|               └── Real/
 │           └── Training/
+|               └── Fake/
+|               └── Real/
+├── fake/
 └── real/
 ```
