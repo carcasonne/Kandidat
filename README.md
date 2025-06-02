@@ -25,6 +25,4 @@ spectrograms/
 │           └── Training/
 |               └── Fake/
 |               └── Real/
-├── fake/
-└── real/
 ```
