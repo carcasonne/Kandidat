@@ -7,7 +7,7 @@ The code is setup in such a way that you should write your needed scripts yourse
 
 # Datasets
 
-The system is set up to look for pre-generated spectrogram (in .npy format). The expected folder structure for the three expected datasets: ASV21, ADD, FoR-2sec:
+The system is set up to look for pre-generated spectrogram (in .npy format).The folder structure we used for the three expected datasets: ASV21, ADD, FoR-2sec:
 ```
 spectrograms/
 ├── ADD/
