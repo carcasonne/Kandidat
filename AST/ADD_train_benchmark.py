@@ -678,20 +678,12 @@ def pre_train_asv():
     generate_enhanced_attention_maps_pretrain(model, add_data, num_samples=samples, flavor_text=save_text, save_dir=dir)
 
 
-def test_single_clip(save_folder, prefix):
-    embedding_size = 300
-    AST_MODEL_CHECKPOINT = "checkpoints/asv_100k_from_hpc"
-    AST_model = load_modified_ast_model(
-        base_model_name="MIT/ast-finetuned-audioset-10-10-0.4593",
-        finetuned_model_path=AST_MODEL_CHECKPOINT,
-        device="cuda",
-    )
-
+def test_single_clip(save_folder, prefix, model):
     # Load dataset
     inference_dataset = InferenceSpectrogramDataset(save_folder, prefix, target_frames=300, label=1)
 
     # Run inference
-    results = run_inference(AST_model, inference_dataset, device="cuda", save_results=True )
+    results = run_inference(model, inference_dataset, device="cuda", save_results=True )
     print_inference_results(results)
 
 def test_single_clip_pretrain(save_folder, prefix):

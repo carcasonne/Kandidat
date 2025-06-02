@@ -69,7 +69,6 @@ class ASVspoofDataset(Dataset):
         # Load precomputed log-mel spectrogram
         spectrogram = np.load(file_path).astype(np.float32)  # shape: (num_frames, 128)
         spectrogram = spectrogram.T
-        print(f"yoyoyo its me shape again TOP {spectrogram.shape}")
 
         # Ensure correct shape: (300, 128)
         # 300 since this is the average
@@ -92,7 +91,6 @@ class ASVspoofDataset(Dataset):
             spectrogram = self.transform(spectrogram)
             spectrogram = spectrogram.squeeze(0)
 
-        print(f"its a me AFTER {spectrogram.shape}")
         return {
             "input_values": spectrogram,
             "labels": torch.tensor(label, dtype=torch.long)
