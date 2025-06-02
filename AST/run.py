@@ -1,4 +1,4 @@
-from ADD_train_benchmark import *
+from train import *
 from modules.utils import *
 
 path = "in-the-wild/ssstwitter.com_1748187133462.mp3"
