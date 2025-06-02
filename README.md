@@ -3,7 +3,7 @@
 This GitHub repository contains the python scripts used to load, run, and evaluate the models for our Master Thesis, which can be found in the 'AST' folder.
 It also contains a project for creating consistent figures from the weights and biases project logs in the DataVisualization folder.
 
-The code is setup in such a way that you should write your needed scripts yourself in the AST folder, utilizing the existing classes to load the needed datasets and models, and train/benchmark your model on the chosen data. Look at AST/benchmark_vson.py for inspiration in how to do it.
+The code is setup in such a way that you should write your needed scripts yourself in the AST folder, utilizing the existing classes to load the needed datasets and models, and train/benchmark your model on the chosen data. Look at AST/train.py for inspiration on how to do it.
 
 # Datasets
 
